@@ -51,6 +51,10 @@ export declare class DataGrid implements DataGridInstance {
     private updateVirtualScroll;
     private render;
     private injectStyles;
+    private contextMenu;
+    private showContextMenu;
+    private hideContextMenu;
+    private handleContextMenuAction;
     private injectEventHandlers;
 }
 export default DataGrid;

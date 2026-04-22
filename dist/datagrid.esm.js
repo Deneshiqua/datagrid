@@ -671,8 +671,8 @@ var DataGrid = class {
     this.scrollHandler = null;
     this.resizeObserver = null;
     this.isDestroyed = false;
-    // Column resize tracking
     this.resizeStartX = 0;
+    this.contextMenu = null;
     this.container = container;
     this.config = {
       rowHeight: options.rowHeight ?? 48,
@@ -768,17 +768,11 @@ var DataGrid = class {
     }
     return result;
   }
-  // ============================================
-  // Public API - Selection
-  // ============================================
   getSelectedRows() {
     return [];
   }
   clearSelection() {
   }
-  // ============================================
-  // Public API - Sorting & Filtering
-  // ============================================
   getSortState() {
     return this.dataManager.getSortState();
   }
@@ -854,10 +848,7 @@ var DataGrid = class {
     }
   }
   getScrollPosition() {
-    return {
-      scrollTop: this.virtualScroll.getConfig().scrollTop,
-      scrollLeft: 0
-    };
+    return { scrollTop: this.virtualScroll.getConfig().scrollTop, scrollLeft: 0 };
   }
   setScrollPosition(position) {
     const maxScrollTop = this.virtualScroll.getScrollRange();
@@ -869,9 +860,6 @@ var DataGrid = class {
   getViewportInfo() {
     return this.virtualScroll.compute().viewport;
   }
-  // ============================================
-  // Public API - Export
-  // ============================================
   exportToCSV() {
     const data = this.getData();
     const columns = this.columnManager.getVisibleColumns();
@@ -885,14 +873,9 @@ var DataGrid = class {
     );
     return [headers.join(","), ...rows].join("\n");
   }
-  // ============================================
-  // Public API - Lifecycle
-  // ============================================
   destroy() {
     this.isDestroyed = true;
-    if (this.scrollHandler && this.container) {
-      this.container.removeEventListener("scroll", this.scrollHandler);
-    }
+    if (this.scrollHandler && this.container) this.container.removeEventListener("scroll", this.scrollHandler);
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
@@ -907,9 +890,7 @@ var DataGrid = class {
     this.container.style.overflow = "auto";
     this.container.style.position = "relative";
     const rect = this.container.getBoundingClientRect();
-    this.virtualScroll.setConfig({
-      containerHeight: rect.height - this.config.headerHeight
-    });
+    this.virtualScroll.setConfig({ containerHeight: rect.height - this.config.headerHeight });
   }
   setupScrollHandling() {
     if (!this.container) return;
@@ -936,9 +917,7 @@ var DataGrid = class {
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { height } = entry.contentRect;
-        this.virtualScroll.setConfig({
-          containerHeight: height - this.config.headerHeight
-        });
+        this.virtualScroll.setConfig({ containerHeight: height - this.config.headerHeight });
         this.updateVirtualScroll();
         this.render();
       }
@@ -959,18 +938,24 @@ var DataGrid = class {
     const data = this.getData();
     const visibleRange = result.visibleItems;
     const columns = this.columnManager.getColumnsInOrder();
-    void columns;
+    const sortStates = this.dataManager.getSortState();
     let html = "";
-    html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex;">`;
+    html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex; position: relative;">`;
     for (const col of columns) {
       if (!this.columnManager.isColumnVisible(col.id)) continue;
       const width = this.columnManager.getColumnWidth(col.id);
-      const pinClass = this.columnManager.getColumnPin(col.id) === "left" ? " dg-pin-left" : this.columnManager.getColumnPin(col.id) === "right" ? " dg-pin-right" : "";
-      html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
-        <span class="dg-header-text">${col.header}</span>
-        ${col.sortable !== false ? '<span class="dg-sort-icon"></span>' : ""}
+      const pinPos = this.columnManager.getColumnPin(col.id);
+      const pinClass = pinPos === "left" ? " dg-pin-left" : pinPos === "right" ? " dg-pin-right" : "";
+      const sortState = sortStates.find((s) => s.columnId === col.id);
+      let sortIcon = "";
+      if (sortState) {
+        const arrow = sortState.direction === "asc" ? " \u25B2" : " \u25BC";
+        sortIcon = `<span class="dg-sort-arrow">${arrow}</span>`;
+      }
+      html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" data-pinned="${pinPos || ""}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+        <span class="dg-header-text">${col.header}${sortIcon}</span>
+        <div class="dg-resize-handle" data-resize-column="${col.id}"></div>
       </div>`;
-      html += `<div class="dg-resize-handle" data-resize-column="${col.id}"></div>`;
     }
     html += "</div>";
     const bodyHeight = this.dataManager.getRowCount() * this.config.rowHeight;
@@ -998,23 +983,20 @@ var DataGrid = class {
     this.container.innerHTML = html;
   }
   injectStyles() {
-    if (document.getElementById("datagrid-styles-v3")) return;
+    if (document.getElementById("datagrid-styles-v4")) return;
     const style = document.createElement("style");
-    style.id = "datagrid-styles-v3";
+    style.id = "datagrid-styles-v4";
     style.textContent = `
       .dg-header {
         background: #f8f9fa;
         border-bottom: 2px solid #dee2e6;
-        position: sticky;
-        top: 0;
-        z-index: 2;
+        display: flex;
         user-select: none;
       }
       .dg-header-cell {
         padding: 0 12px;
         display: flex;
         align-items: center;
-        justify-content: space-between;
         font-weight: 600;
         color: #495057;
         font-size: 14px;
@@ -1022,24 +1004,25 @@ var DataGrid = class {
         cursor: pointer;
         position: relative;
         flex-shrink: 0;
+        overflow: visible;
       }
       .dg-header-cell:hover { background: #e9ecef; }
-      .dg-header-cell.dg-pin-left { position: sticky; left: 0; z-index: 3; background: #f8f9fa; }
-      .dg-header-cell.dg-pin-right { position: sticky; right: 0; z-index: 3; background: #f8f9fa; }
-      .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .dg-sort-icon { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #adb5bd; margin-left: 8px; }
+      .dg-header-cell.dg-pin-left { position: sticky; left: 0; z-index: 10; background: #e8f4f8; }
+      .dg-header-cell.dg-pin-right { position: sticky; right: 0; z-index: 10; background: #fff9e6; }
+      .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+      .dg-sort-arrow { font-size: 10px; color: #6c5ce7; }
       .dg-resize-handle {
         position: absolute;
-        right: 0;
+        right: -3px;
         top: 0;
         bottom: 0;
         width: 6px;
         cursor: col-resize;
-        z-index: 4;
+        z-index: 20;
         background: transparent;
+        border-radius: 3px;
       }
-      .dg-resize-handle:hover { background: rgba(108, 92, 231, 0.3); }
-      .dg-resize-handle.dg-resizing { background: #6c5ce7; }
+      .dg-resize-handle:hover, .dg-resize-handle.dg-resizing { background: #6c5ce7; }
       .dg-body { overflow: hidden; }
       .dg-row { border-bottom: 1px solid #f1f3f5; }
       .dg-row:hover { background: #f8f9fa; }
@@ -1055,8 +1038,115 @@ var DataGrid = class {
         white-space: nowrap;
         flex-shrink: 0;
       }
+      /* Context Menu */
+      .dg-context-menu {
+        position: fixed;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        padding: 8px 0;
+        z-index: 1000;
+        min-width: 180px;
+      }
+      .dg-context-menu-item {
+        padding: 10px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #333;
+        font-size: 14px;
+      }
+      .dg-context-menu-item:hover { background: #f5f5f5; }
+      .dg-context-menu-item.disabled { color: #ccc; cursor: not-allowed; }
+      .dg-context-menu-divider { height: 1px; background: #eee; margin: 8px 0; }
+      .dg-context-menu-item .icon { width: 18px; text-align: center; }
     `;
     document.head.appendChild(style);
+  }
+  showContextMenu(x, y, columnId) {
+    this.hideContextMenu();
+    const col = this.columnManager.getColumn(columnId);
+    if (!col) return;
+    const pinPos = this.columnManager.getColumnPin(columnId);
+    const isVisible = this.columnManager.isColumnVisible(columnId);
+    const menu = document.createElement("div");
+    menu.className = "dg-context-menu";
+    menu.style.left = x + "px";
+    menu.style.top = y + "px";
+    menu.innerHTML = `
+      <div class="dg-context-menu-item" data-action="sort-asc">
+        <span class="icon">\u25B2</span> Sort Ascending
+      </div>
+      <div class="dg-context-menu-item" data-action="sort-desc">
+        <span class="icon">\u25BC</span> Sort Descending
+      </div>
+      <div class="dg-context-menu-item" data-action="sort-clear">
+        <span class="icon">\u2715</span> Clear Sort
+      </div>
+      <div class="dg-context-menu-divider"></div>
+      <div class="dg-context-menu-item" data-action="pin-left" ${pinPos === "left" ? 'class="disabled"' : ""}>
+        <span class="icon">\u{1F4CC}</span> Pin Left
+      </div>
+      <div class="dg-context-menu-item" data-action="pin-right" ${pinPos === "right" ? 'class="disabled"' : ""}>
+        <span class="icon">\u{1F4CC}</span> Pin Right
+      </div>
+      <div class="dg-context-menu-item" data-action="unpin" ${!pinPos ? 'class="disabled"' : ""}>
+        <span class="icon">\u{1F513}</span> Unpin
+      </div>
+      <div class="dg-context-menu-divider"></div>
+      <div class="dg-context-menu-item" data-action="toggle-visibility">
+        <span class="icon">${isVisible ? "\u{1F441}\uFE0F" : "\u{1F512}"}</span> ${isVisible ? "Hide Column" : "Show Column"}
+      </div>
+    `;
+    menu.addEventListener("click", (e) => {
+      const target = e.target;
+      const item = target.closest(".dg-context-menu-item");
+      if (!item || item.classList.contains("disabled")) return;
+      const action = item.dataset.action;
+      this.handleContextMenuAction(action, columnId);
+      this.hideContextMenu();
+    });
+    document.body.appendChild(menu);
+    this.contextMenu = menu;
+    setTimeout(() => {
+      document.addEventListener("click", this.hideContextMenu.bind(this), { once: true });
+    }, 0);
+  }
+  hideContextMenu() {
+    if (this.contextMenu) {
+      this.contextMenu.remove();
+      this.contextMenu = null;
+    }
+  }
+  handleContextMenuAction(action, columnId) {
+    switch (action) {
+      case "sort-asc":
+        this.dataManager.addSortState(columnId, "asc");
+        this.events.onSort?.(this.dataManager.getSortState());
+        break;
+      case "sort-desc":
+        this.dataManager.addSortState(columnId, "desc");
+        this.events.onSort?.(this.dataManager.getSortState());
+        break;
+      case "sort-clear":
+        this.dataManager.clearSortState();
+        this.events.onSort?.(this.dataManager.getSortState());
+        break;
+      case "pin-left":
+        this.columnManager.pinColumnLeft(columnId);
+        break;
+      case "pin-right":
+        this.columnManager.pinColumnRight(columnId);
+        break;
+      case "unpin":
+        this.columnManager.unpinColumn(columnId);
+        break;
+      case "toggle-visibility":
+        this.columnManager.toggleColumnVisibility(columnId);
+        break;
+    }
+    this.render();
   }
   injectEventHandlers() {
     if (!this.container) return;
@@ -1067,6 +1157,7 @@ var DataGrid = class {
       let isResizing = false;
       const onMouseMove = (e) => {
         if (!isResizing) return;
+        e.preventDefault();
         const deltaX = e.clientX - this.resizeStartX;
         const currentWidth = this.columnManager.getColumnWidth(colId);
         this.columnManager.setColumnWidth(colId, currentWidth + deltaX);
@@ -1080,6 +1171,8 @@ var DataGrid = class {
         document.removeEventListener("mouseup", onMouseUp);
       };
       handle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         isResizing = true;
         this.resizeStartX = e.clientX;
         handle.classList.add("dg-resizing");
@@ -1091,7 +1184,8 @@ var DataGrid = class {
     headerCells.forEach((cell) => {
       const colId = cell.dataset.columnId;
       if (!colId) return;
-      cell.addEventListener("click", () => {
+      cell.addEventListener("click", (e) => {
+        if (e.target.classList.contains("dg-resize-handle")) return;
         const col = this.columnManager.getColumn(colId);
         if (!col || col.sortable === false) return;
         const currentSort = this.dataManager.getSortState();
@@ -1105,6 +1199,11 @@ var DataGrid = class {
         }
         this.events.onSort?.(this.dataManager.getSortState());
         this.render();
+      });
+      cell.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        const mouseEvent = e;
+        this.showContextMenu(mouseEvent.clientX, mouseEvent.clientY, colId);
       });
     });
     const rows = this.container.querySelectorAll(".dg-row");

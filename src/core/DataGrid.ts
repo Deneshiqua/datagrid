@@ -29,14 +29,11 @@ export class DataGrid implements DataGridInstance {
   private scrollHandler: ((e: Event) => void) | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private isDestroyed: boolean = false;
-
-  // Column resize tracking
   private resizeStartX: number = 0;
 
   constructor(container: HTMLElement, options: DataGridOptions = {}) {
     this.container = container;
     
-    // Default configuration
     this.config = {
       rowHeight: options.rowHeight ?? 48,
       headerHeight: options.headerHeight ?? 56,
@@ -49,7 +46,6 @@ export class DataGrid implements DataGridInstance {
       pagination: options.pagination ?? { enabled: false, pageSize: 100, pageSizes: [25, 50, 100, 500] },
     };
 
-    // Events
     this.events = {
       onScroll: options.onScroll,
       onSort: options.onSort,
@@ -62,7 +58,6 @@ export class DataGrid implements DataGridInstance {
       onRowDoubleClick: options.onRowDoubleClick,
     };
 
-    // Initialize managers
     this.virtualScroll = new VirtualScroll({
       itemHeight: this.config.rowHeight,
       bufferSize: this.config.bufferSize,
@@ -88,9 +83,7 @@ export class DataGrid implements DataGridInstance {
   // Public API - Data
   // ============================================
 
-  getData(): RowData[] {
-    return this.dataManager.getData();
-  }
+  getData(): RowData[] { return this.dataManager.getData(); }
 
   setData(data: RowData[]): void {
     this.dataManager.setData(data);
@@ -98,9 +91,7 @@ export class DataGrid implements DataGridInstance {
     this.render();
   }
 
-  getRow(rowId: string): RowData | null {
-    return this.dataManager.getRowById(rowId);
-  }
+  getRow(rowId: string): RowData | null { return this.dataManager.getRowById(rowId); }
 
   insertRow(index: number, row: RowData): void {
     this.dataManager.insertRow(index, row);
@@ -138,16 +129,8 @@ export class DataGrid implements DataGridInstance {
     return result;
   }
 
-  // ============================================
-  // Public API - Selection
-  // ============================================
-
   getSelectedRows(): RowData[] { return []; }
   clearSelection(): void {}
-
-  // ============================================
-  // Public API - Sorting & Filtering
-  // ============================================
 
   getSortState(): SortState[] { return this.dataManager.getSortState(); }
   setSortState(state: SortState[]): void {
@@ -187,44 +170,18 @@ export class DataGrid implements DataGridInstance {
     this.render();
   }
 
-  pinColumnLeft(columnId: string): void {
-    this.columnManager.pinColumnLeft(columnId);
-    this.render();
-  }
-
-  pinColumnRight(columnId: string): void {
-    this.columnManager.pinColumnRight(columnId);
-    this.render();
-  }
-
-  unpinColumn(columnId: string): void {
-    this.columnManager.unpinColumn(columnId);
-    this.render();
-  }
-
-  toggleColumnPin(columnId: string): void {
-    this.columnManager.toggleColumnPin(columnId);
-    this.render();
-  }
-
-  toggleColumnVisibility(columnId: string): void {
-    this.columnManager.toggleColumnVisibility(columnId);
-    this.render();
-  }
-
-  moveColumn(fromIndex: number, toIndex: number): void {
-    this.columnManager.moveColumn(fromIndex, toIndex);
-    this.render();
-  }
+  pinColumnLeft(columnId: string): void { this.columnManager.pinColumnLeft(columnId); this.render(); }
+  pinColumnRight(columnId: string): void { this.columnManager.pinColumnRight(columnId); this.render(); }
+  unpinColumn(columnId: string): void { this.columnManager.unpinColumn(columnId); this.render(); }
+  toggleColumnPin(columnId: string): void { this.columnManager.toggleColumnPin(columnId); this.render(); }
+  toggleColumnVisibility(columnId: string): void { this.columnManager.toggleColumnVisibility(columnId); this.render(); }
+  moveColumn(fromIndex: number, toIndex: number): void { this.columnManager.moveColumn(fromIndex, toIndex); this.render(); }
 
   // ============================================
   // Public API - Scroll
   // ============================================
 
-  refresh(): void {
-    this.updateVirtualScroll();
-    this.render();
-  }
+  refresh(): void { this.updateVirtualScroll(); this.render(); }
 
   scrollToRow(rowId: string): void {
     const data = this.getData();
@@ -236,10 +193,7 @@ export class DataGrid implements DataGridInstance {
   }
 
   getScrollPosition(): ScrollPosition {
-    return {
-      scrollTop: this.virtualScroll.getConfig().scrollTop,
-      scrollLeft: 0,
-    };
+    return { scrollTop: this.virtualScroll.getConfig().scrollTop, scrollLeft: 0 };
   }
 
   setScrollPosition(position: ScrollPosition): void {
@@ -250,13 +204,7 @@ export class DataGrid implements DataGridInstance {
     this.events.onScroll?.(position);
   }
 
-  getViewportInfo(): ViewportInfo {
-    return this.virtualScroll.compute().viewport;
-  }
-
-  // ============================================
-  // Public API - Export
-  // ============================================
+  getViewportInfo(): ViewportInfo { return this.virtualScroll.compute().viewport; }
 
   exportToCSV(): string {
     const data = this.getData();
@@ -272,19 +220,10 @@ export class DataGrid implements DataGridInstance {
     return [headers.join(','), ...rows].join('\n');
   }
 
-  // ============================================
-  // Public API - Lifecycle
-  // ============================================
-
   destroy(): void {
     this.isDestroyed = true;
-    if (this.scrollHandler && this.container) {
-      this.container.removeEventListener('scroll', this.scrollHandler);
-    }
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
-    }
+    if (this.scrollHandler && this.container) this.container.removeEventListener('scroll', this.scrollHandler);
+    if (this.resizeObserver) { this.resizeObserver.disconnect(); this.resizeObserver = null; }
     this.container = null;
   }
 
@@ -297,9 +236,7 @@ export class DataGrid implements DataGridInstance {
     this.container.style.overflow = 'auto';
     this.container.style.position = 'relative';
     const rect = this.container.getBoundingClientRect();
-    this.virtualScroll.setConfig({
-      containerHeight: rect.height - this.config.headerHeight,
-    });
+    this.virtualScroll.setConfig({ containerHeight: rect.height - this.config.headerHeight });
   }
 
   private setupScrollHandling(): void {
@@ -328,9 +265,7 @@ export class DataGrid implements DataGridInstance {
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { height } = entry.contentRect;
-        this.virtualScroll.setConfig({
-          containerHeight: height - this.config.headerHeight,
-        });
+        this.virtualScroll.setConfig({ containerHeight: height - this.config.headerHeight });
         this.updateVirtualScroll();
         this.render();
       }
@@ -339,9 +274,7 @@ export class DataGrid implements DataGridInstance {
   }
 
   private updateVirtualScroll(): void {
-    const containerHeight = this.container?.clientHeight 
-      ? this.container.clientHeight - this.config.headerHeight 
-      : 600;
+    const containerHeight = this.container?.clientHeight ? this.container.clientHeight - this.config.headerHeight : 600;
     this.virtualScroll.setConfig({
       itemCount: this.dataManager.getRowCount(),
       itemHeight: this.config.rowHeight,
@@ -356,27 +289,34 @@ export class DataGrid implements DataGridInstance {
     const data = this.getData();
     const visibleRange = result.visibleItems;
     const columns = this.columnManager.getColumnsInOrder();
-    void columns; // Used in loop below
+    const sortStates = this.dataManager.getSortState();
 
     let html = '';
     
-    // Header with resize handles
-    html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex;">`;
+    // Header
+    html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex; position: relative;">`;
     for (const col of columns) {
       if (!this.columnManager.isColumnVisible(col.id)) continue;
       const width = this.columnManager.getColumnWidth(col.id);
-      const pinClass = this.columnManager.getColumnPin(col.id) === 'left' ? ' dg-pin-left' : 
-                       this.columnManager.getColumnPin(col.id) === 'right' ? ' dg-pin-right' : '';
-      html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
-        <span class="dg-header-text">${col.header}</span>
-        ${col.sortable !== false ? '<span class="dg-sort-icon"></span>' : ''}
+      const pinPos = this.columnManager.getColumnPin(col.id);
+      const pinClass = pinPos === 'left' ? ' dg-pin-left' : pinPos === 'right' ? ' dg-pin-right' : '';
+      
+      // Sort state
+      const sortState = sortStates.find(s => s.columnId === col.id);
+      let sortIcon = '';
+      if (sortState) {
+        const arrow = sortState.direction === 'asc' ? ' ▲' : ' ▼';
+        sortIcon = `<span class="dg-sort-arrow">${arrow}</span>`;
+      }
+      
+      html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" data-pinned="${pinPos || ''}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+        <span class="dg-header-text">${col.header}${sortIcon}</span>
+        <div class="dg-resize-handle" data-resize-column="${col.id}"></div>
       </div>`;
-      // Resize handle
-      html += `<div class="dg-resize-handle" data-resize-column="${col.id}"></div>`;
     }
     html += '</div>';
 
-    // Body with virtual scroll
+    // Body
     const bodyHeight = this.dataManager.getRowCount() * this.config.rowHeight;
     html += `<div class="dg-body" style="height: ${bodyHeight}px; position: relative;">`;
     
@@ -397,7 +337,6 @@ export class DataGrid implements DataGridInstance {
           ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
         </div>`;
       }
-      
       html += '</div>';
     }
     html += '</div>';
@@ -408,23 +347,20 @@ export class DataGrid implements DataGridInstance {
   }
 
   private injectStyles(): void {
-    if (document.getElementById('datagrid-styles-v3')) return;
+    if (document.getElementById('datagrid-styles-v4')) return;
     const style = document.createElement('style');
-    style.id = 'datagrid-styles-v3';
+    style.id = 'datagrid-styles-v4';
     style.textContent = `
       .dg-header {
         background: #f8f9fa;
         border-bottom: 2px solid #dee2e6;
-        position: sticky;
-        top: 0;
-        z-index: 2;
+        display: flex;
         user-select: none;
       }
       .dg-header-cell {
         padding: 0 12px;
         display: flex;
         align-items: center;
-        justify-content: space-between;
         font-weight: 600;
         color: #495057;
         font-size: 14px;
@@ -432,24 +368,25 @@ export class DataGrid implements DataGridInstance {
         cursor: pointer;
         position: relative;
         flex-shrink: 0;
+        overflow: visible;
       }
       .dg-header-cell:hover { background: #e9ecef; }
-      .dg-header-cell.dg-pin-left { position: sticky; left: 0; z-index: 3; background: #f8f9fa; }
-      .dg-header-cell.dg-pin-right { position: sticky; right: 0; z-index: 3; background: #f8f9fa; }
-      .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .dg-sort-icon { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #adb5bd; margin-left: 8px; }
+      .dg-header-cell.dg-pin-left { position: sticky; left: 0; z-index: 10; background: #e8f4f8; }
+      .dg-header-cell.dg-pin-right { position: sticky; right: 0; z-index: 10; background: #fff9e6; }
+      .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+      .dg-sort-arrow { font-size: 10px; color: #6c5ce7; }
       .dg-resize-handle {
         position: absolute;
-        right: 0;
+        right: -3px;
         top: 0;
         bottom: 0;
         width: 6px;
         cursor: col-resize;
-        z-index: 4;
+        z-index: 20;
         background: transparent;
+        border-radius: 3px;
       }
-      .dg-resize-handle:hover { background: rgba(108, 92, 231, 0.3); }
-      .dg-resize-handle.dg-resizing { background: #6c5ce7; }
+      .dg-resize-handle:hover, .dg-resize-handle.dg-resizing { background: #6c5ce7; }
       .dg-body { overflow: hidden; }
       .dg-row { border-bottom: 1px solid #f1f3f5; }
       .dg-row:hover { background: #f8f9fa; }
@@ -465,8 +402,129 @@ export class DataGrid implements DataGridInstance {
         white-space: nowrap;
         flex-shrink: 0;
       }
+      /* Context Menu */
+      .dg-context-menu {
+        position: fixed;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        padding: 8px 0;
+        z-index: 1000;
+        min-width: 180px;
+      }
+      .dg-context-menu-item {
+        padding: 10px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #333;
+        font-size: 14px;
+      }
+      .dg-context-menu-item:hover { background: #f5f5f5; }
+      .dg-context-menu-item.disabled { color: #ccc; cursor: not-allowed; }
+      .dg-context-menu-divider { height: 1px; background: #eee; margin: 8px 0; }
+      .dg-context-menu-item .icon { width: 18px; text-align: center; }
     `;
     document.head.appendChild(style);
+  }
+
+  private contextMenu: HTMLElement | null = null;
+
+  private showContextMenu(x: number, y: number, columnId: string): void {
+    this.hideContextMenu();
+    
+    const col = this.columnManager.getColumn(columnId);
+    if (!col) return;
+
+    const pinPos = this.columnManager.getColumnPin(columnId);
+    const isVisible = this.columnManager.isColumnVisible(columnId);
+
+    const menu = document.createElement('div');
+    menu.className = 'dg-context-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    
+    menu.innerHTML = `
+      <div class="dg-context-menu-item" data-action="sort-asc">
+        <span class="icon">▲</span> Sort Ascending
+      </div>
+      <div class="dg-context-menu-item" data-action="sort-desc">
+        <span class="icon">▼</span> Sort Descending
+      </div>
+      <div class="dg-context-menu-item" data-action="sort-clear">
+        <span class="icon">✕</span> Clear Sort
+      </div>
+      <div class="dg-context-menu-divider"></div>
+      <div class="dg-context-menu-item" data-action="pin-left" ${pinPos === 'left' ? 'class="disabled"' : ''}>
+        <span class="icon">📌</span> Pin Left
+      </div>
+      <div class="dg-context-menu-item" data-action="pin-right" ${pinPos === 'right' ? 'class="disabled"' : ''}>
+        <span class="icon">📌</span> Pin Right
+      </div>
+      <div class="dg-context-menu-item" data-action="unpin" ${!pinPos ? 'class="disabled"' : ''}>
+        <span class="icon">🔓</span> Unpin
+      </div>
+      <div class="dg-context-menu-divider"></div>
+      <div class="dg-context-menu-item" data-action="toggle-visibility">
+        <span class="icon">${isVisible ? '👁️' : '🔒'}</span> ${isVisible ? 'Hide Column' : 'Show Column'}
+      </div>
+    `;
+
+    menu.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const item = target.closest('.dg-context-menu-item') as HTMLElement;
+      if (!item || item.classList.contains('disabled')) return;
+      
+      const action = item.dataset.action;
+      this.handleContextMenuAction(action!, columnId);
+      this.hideContextMenu();
+    });
+
+    document.body.appendChild(menu);
+    this.contextMenu = menu;
+
+    // Close on click outside
+    setTimeout(() => {
+      document.addEventListener('click', this.hideContextMenu.bind(this), { once: true });
+    }, 0);
+  }
+
+  private hideContextMenu(): void {
+    if (this.contextMenu) {
+      this.contextMenu.remove();
+      this.contextMenu = null;
+    }
+  }
+
+  private handleContextMenuAction(action: string, columnId: string): void {
+    switch (action) {
+      case 'sort-asc':
+        this.dataManager.addSortState(columnId, 'asc');
+        this.events.onSort?.(this.dataManager.getSortState());
+        break;
+      case 'sort-desc':
+        this.dataManager.addSortState(columnId, 'desc');
+        this.events.onSort?.(this.dataManager.getSortState());
+        break;
+      case 'sort-clear':
+        this.dataManager.clearSortState();
+        this.events.onSort?.(this.dataManager.getSortState());
+        break;
+      case 'pin-left':
+        this.columnManager.pinColumnLeft(columnId);
+        break;
+      case 'pin-right':
+        this.columnManager.pinColumnRight(columnId);
+        break;
+      case 'unpin':
+        this.columnManager.unpinColumn(columnId);
+        break;
+      case 'toggle-visibility':
+        this.columnManager.toggleColumnVisibility(columnId);
+        break;
+    }
+    this.render();
   }
 
   private injectEventHandlers(): void {
@@ -482,6 +540,7 @@ export class DataGrid implements DataGridInstance {
 
       const onMouseMove = (e: MouseEvent) => {
         if (!isResizing) return;
+        e.preventDefault();
         const deltaX = e.clientX - this.resizeStartX;
         const currentWidth = this.columnManager.getColumnWidth(colId);
         this.columnManager.setColumnWidth(colId, currentWidth + deltaX);
@@ -497,6 +556,8 @@ export class DataGrid implements DataGridInstance {
       };
 
       handle.addEventListener('mousedown', (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
         isResizing = true;
         this.resizeStartX = (e as MouseEvent).clientX;
         handle.classList.add('dg-resizing');
@@ -511,7 +572,11 @@ export class DataGrid implements DataGridInstance {
       const colId = (cell as HTMLElement).dataset.columnId;
       if (!colId) return;
 
-      cell.addEventListener('click', () => {
+      // Sort on click
+      cell.addEventListener('click', (e) => {
+        // Don't sort if clicking resize handle
+        if ((e.target as HTMLElement).classList.contains('dg-resize-handle')) return;
+        
         const col = this.columnManager.getColumn(colId);
         if (!col || col.sortable === false) return;
 
@@ -527,6 +592,13 @@ export class DataGrid implements DataGridInstance {
         }
         this.events.onSort?.(this.dataManager.getSortState());
         this.render();
+      });
+
+      // Right-click for context menu
+      cell.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const mouseEvent = e as MouseEvent;
+        this.showContextMenu(mouseEvent.clientX, mouseEvent.clientY, colId);
       });
     });
 
