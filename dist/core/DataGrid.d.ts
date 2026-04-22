@@ -17,6 +17,11 @@ export declare class DataGrid implements DataGridInstance {
     insertRow(index: number, row: RowData): void;
     deleteRow(rowId: string): void;
     updateRow(rowId: string, data: Partial<RowData>): void;
+    batch(operations: any[]): void;
+    canUndo(): boolean;
+    canRedo(): boolean;
+    undo(): boolean;
+    redo(): boolean;
     getSelectedRows(): RowData[];
     clearSelection(): void;
     getSortState(): SortState[];

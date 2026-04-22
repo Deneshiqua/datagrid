@@ -114,6 +114,38 @@ export class DataGrid implements DataGridInstance {
     this.render();
   }
 
+  batch(operations: any[]): void {
+    this.dataManager.batch(operations);
+    this.updateVirtualScroll();
+    this.render();
+  }
+
+  canUndo(): boolean {
+    return this.dataManager.canUndo();
+  }
+
+  canRedo(): boolean {
+    return this.dataManager.canRedo();
+  }
+
+  undo(): boolean {
+    const result = this.dataManager.undo();
+    if (result) {
+      this.updateVirtualScroll();
+      this.render();
+    }
+    return result;
+  }
+
+  redo(): boolean {
+    const result = this.dataManager.redo();
+    if (result) {
+      this.updateVirtualScroll();
+      this.render();
+    }
+    return result;
+  }
+
   // ============================================
   // Public API - Selection
   // ============================================

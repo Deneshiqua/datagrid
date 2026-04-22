@@ -82,6 +82,33 @@ export class DataGrid {
         this.dataManager.updateRow(rowId, data);
         this.render();
     }
+    batch(operations) {
+        this.dataManager.batch(operations);
+        this.updateVirtualScroll();
+        this.render();
+    }
+    canUndo() {
+        return this.dataManager.canUndo();
+    }
+    canRedo() {
+        return this.dataManager.canRedo();
+    }
+    undo() {
+        const result = this.dataManager.undo();
+        if (result) {
+            this.updateVirtualScroll();
+            this.render();
+        }
+        return result;
+    }
+    redo() {
+        const result = this.dataManager.redo();
+        if (result) {
+            this.updateVirtualScroll();
+            this.render();
+        }
+        return result;
+    }
     // ============================================
     // Public API - Selection
     // ============================================

@@ -1,10 +1,14 @@
 import { RowData, SortState, FilterState } from '../types/grid';
+export interface BatchOperation {
+    type: 'insert' | 'delete' | 'update';
+    rowId?: string;
+    index?: number;
+    data?: RowData;
+    previousData?: RowData;
+}
 export interface DataManagerOptions {
-    /** Unique ID field name */
     idField: string;
-    /** Enable sorting */
     sortable: boolean;
-    /** Enable filtering */
     filterable: boolean;
 }
 export declare class DataManager {
@@ -15,106 +19,50 @@ export declare class DataManager {
     private filterStates;
     private quickFilterValue;
     private rowIdMap;
+    private undoStack;
+    private redoStack;
+    private maxHistorySize;
+    private listeners;
     constructor(options?: Partial<DataManagerOptions>);
-    /**
-     * Set data and rebuild index
-     */
     setData(data: RowData[]): void;
-    /**
-     * Get all processed data
-     */
     getData(): RowData[];
-    /**
-     * Get original (unprocessed) data
-     */
     getOriginalData(): RowData[];
-    /**
-     * Get row count
-     */
     getRowCount(): number;
-    /**
-     * Get row by index
-     */
     getRowAt(index: number): RowData | null;
-    /**
-     * Get row by ID
-     */
     getRowById(id: string): RowData | null;
-    /**
-     * Get row ID
-     */
     getRowId(rowData: RowData): string;
-    /**
-     * Insert row at index
-     */
-    insertRow(index: number, row: RowData): void;
-    /**
-     * Delete row by ID
-     */
-    deleteRow(id: string): void;
-    /**
-     * Update row by ID
-     */
-    updateRow(id: string, data: Partial<RowData>): void;
-    /**
-     * Get sort state
-     */
+    insertRow(index: number, row: RowData, recordHistory?: boolean): void;
+    deleteRow(id: string, recordHistory?: boolean): boolean;
+    updateRow(id: string, data: Partial<RowData>, recordHistory?: boolean): boolean;
+    batch(operations: BatchOperation[], recordHistory?: boolean): void;
+    private applyOperation;
+    canUndo(): boolean;
+    canRedo(): boolean;
+    undo(): boolean;
+    redo(): boolean;
+    private pushUndo;
+    clearHistory(): void;
+    getHistorySize(): {
+        undo: number;
+        redo: number;
+    };
+    onChange(listener: () => void): () => void;
+    private notifyListeners;
     getSortState(): SortState[];
-    /**
-     * Set sort state
-     */
     setSortState(states: SortState[]): void;
-    /**
-     * Add single sort state
-     */
     addSortState(columnId: string, direction: 'asc' | 'desc'): void;
-    /**
-     * Clear sort state
-     */
     clearSortState(): void;
-    /**
-     * Get filter state
-     */
     getFilterState(): FilterState[];
-    /**
-     * Set filter state
-     */
     setFilterState(states: FilterState[]): void;
-    /**
-     * Set quick filter (search across all columns)
-     */
     setQuickFilter(value: string): void;
-    /**
-     * Clear all filters
-     */
     clearFilters(): void;
-    /**
-     * Process data: filter -> sort -> return
-     */
     private processData;
-    /**
-     * Apply filters to data
-     */
     private applyFilters;
-    /**
-     * Check if row matches a single filter
-     */
     private matchesFilter;
     private matchesTextFilter;
     private matchesNumberFilter;
-    private matchesBooleanFilter;
-    private matchesSetFilter;
-    /**
-     * Apply sorting to data
-     */
     private applySorting;
-    /**
-     * Compare two values for sorting
-     */
     private compareValues;
-    /**
-     * Build row ID index map
-     */
     private buildRowIdMap;
 }
 export default DataManager;

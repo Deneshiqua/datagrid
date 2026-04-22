@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataGrid v0.2 - Undo/Redo & Batch Operations</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #eee;
+    }
+    
+    h1 { text-align: center; margin-bottom: 5px; color: #fff; }
+    .version { text-align: center; color: #6c5ce7; font-weight: bold; margin-bottom: 15px; }
+    
+    .feature-badge {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .feature-badge span {
+      background: rgba(108, 92, 231, 0.2);
+      color: #a29bfe;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin: 0 4px;
+      display: inline-block;
+    }
+    
+    .feature-badge span.completed {
+      background: rgba(0, 206, 201, 0.2);
+      color: #00cec9;
+    }
+    
+    .controls {
+      max-width: 1400px;
+      margin: 0 auto 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .controls button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .controls button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary { background: #6c5ce7; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #5b4cdb; transform: translateY(-2px); }
+    
+    .btn-secondary { background: #2d3436; color: white; }
+    .btn-secondary:hover:not(:disabled) { background: #3d4446; }
+    
+    .btn-danger { background: #d63031; color: white; }
+    .btn-danger:hover:not(:disabled) { background: #c0392b; }
+    
+    .btn-success { background: #00b894; color: white; }
+    .btn-success:hover:not(:disabled) { background: #00a383; }
+    
+    .btn-warning { background: #fdcb6e; color: #2d3436; }
+    
+    .history-info {
+      text-align: center;
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    
+    .history-info span { margin: 0 10px; }
+    .history-info .undo-count { color: #d63031; }
+    .history-info .redo-count { color: #0984e3; }
+    
+    .grid-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      height: 450px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    
+    #my-grid { height: 100%; }
+    
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .info span { color: #6c5ce7; font-weight: bold; }
+    
+    /* Grid Styles */
+    .dg-header { background: #f8f9fa; border-bottom: 2px solid #dee2e6; }
+    .dg-header-cell { font-weight: 600; color: #495057; cursor: pointer; user-select: none; }
+    .dg-header-cell:hover { background: #e9ecef; }
+    .dg-row { border-bottom: 1px solid #f1f3f5; cursor: pointer; }
+    .dg-row:hover { background: #f8f9fa; }
+    .dg-cell { color: #212529; font-size: 14px; }
+    .dg-row.deleted { opacity: 0.4; background: #ffe6e6; }
+    .dg-row.inserted { background: #e6fff2; }
+  </style>
+</head>
+<body>
+  <h1>🚀 DataGrid</h1>
+  <p class="version">v0.2.0 - Epic 1+2: Virtual Scrolling + Undo/Redo + Batch</p>
+  
+  <div class="feature-badge">
+    <span class="completed">✅ Virtual Scrolling</span>
+    <span class="completed">✅ Undo/Redo</span>
+    <span class="completed">✅ Batch Operations</span>
+    <span>⏳ Sorting</span>
+    <span>⏳ Filtering</span>
+    <span>⏳ Selection</span>
+  </div>
+  
+  <div class="history-info">
+    <span>Undo Stack: <b class="undo-count" id="undo-count">0</b></span>
+    <span>Redo Stack: <b class="redo-count" id="redo-count">0</b></span>
+  </div>
+  
+  <div class="controls">
+    <button class="btn-secondary" id="btn-undo" disabled>↩️ Undo</button>
+    <button class="btn-secondary" id="btn-redo" disabled>↪️ Redo</button>
+    <button class="btn-primary" id="btn-add">➕ Add Row</button>
+    <button class="btn-danger" id="btn-delete">🗑️ Delete Selected</button>
+    <button class="btn-success" id="btn-batch">📦 Batch: Add 5 Rows</button>
+    <button class="btn-warning" id="btn-update">✏️ Update Random</button>
+    <button class="btn-secondary" id="btn-clear">🧹 Clear History</button>
+  </div>
+  
+  <div class="grid-container">
+    <div id="my-grid"></div>
+  </div>
+  
+  <p class="info">
+    🎯 <span id="row-count">0</span> rows | 
+    Undo/Redo enabled | Batch operations support
+  </p>
+
+  <script type="module">
+    import { DataGrid } from './dist/index.js';
+
+    let grid;
+    let selectedRowId = null;
+    let nextRowNum = 1;
+
+    const generateRow = () => {
+      const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+      const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia'];
+      const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      
+      return {
+        id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        rowNumber: nextRowNum++,
+        firstName,
+        lastName,
+        fullName: `${firstName} ${lastName}`,
+        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+        age: Math.floor(Math.random() * 40) + 20,
+        city: cities[Math.floor(Math.random() * cities.length)],
+        salary: Math.floor(Math.random() * 60000) + 40000,
+        active: Math.random() > 0.3,
+      };
+    };
+
+    const columns = [
+      { id: 'rowNumber', field: 'rowNumber', header: '#', width: 60 },
+      { id: 'fullName', field: 'fullName', header: 'Full Name', width: 170 },
+      { id: 'email', field: 'email', header: 'Email', width: 220 },
+      { id: 'age', field: 'age', header: 'Age', width: 70, sortable: true },
+      { id: 'city', field: 'city', header: 'City', width: 120 },
+      { id: 'salary', field: 'salary', header: 'Salary ($)', width: 110, sortable: true },
+      { id: 'active', field: 'active', header: 'Active', width: 80 },
+    ];
+
+    function updateHistoryUI() {
+      document.getElementById('undo-count').textContent = grid.canUndo() ? grid.getData().length : '0';
+      document.getElementById('redo-count').textContent = grid.canRedo() ? '0' : '0';
+      document.getElementById('btn-undo').disabled = !grid.canUndo();
+      document.getElementById('btn-redo').disabled = !grid.canRedo();
+    }
+
+    function initGrid() {
+      const container = document.getElementById('my-grid');
+      grid = new DataGrid(container, {
+        rowHeight: 44,
+        headerHeight: 48,
+        bufferSize: 10,
+        sorting: { multiSort: true },
+        onRowClick: (rowId, rowData) => {
+          selectedRowId = rowId;
+          console.log('Selected:', rowId);
+        },
+        onRowDoubleClick: (rowId, rowData) => {
+          console.log('Double clicked:', rowId, rowData);
+        },
+      });
+
+      grid.setColumns(columns);
+      
+      // Initialize with some data
+      const initialData = [];
+      for (let i = 0; i < 100; i++) {
+        initialData.push(generateRow());
+      }
+      grid.setData(initialData);
+      
+      updateHistoryUI();
+      document.getElementById('row-count').textContent = grid.getData().length;
+      
+      console.log('✅ DataGrid v0.2 initialized with', grid.getData().length, 'rows');
+    }
+
+    // Button handlers
+    document.getElementById('btn-undo').addEventListener('click', () => {
+      grid.undo();
+      updateHistoryUI();
+      document.getElementById('row-count').textContent = grid.getData().length;
+      console.log('↩️ Undo performed, rows:', grid.getData().length);
+    });
+
+    document.getElementById('btn-redo').addEventListener('click', () => {
+      grid.redo();
+      updateHistoryUI();
+      document.getElementById('row-count').textContent = grid.getData().length;
+      console.log('↪️ Redo performed, rows:', grid.getData().length);
+    });
+
+    document.getElementById('btn-add').addEventListener('click', () => {
+      const newRow = generateRow();
+      grid.insertRow(0, newRow); // Insert at top
+      updateHistoryUI();
+      document.getElementById('row-count').textContent = grid.getData().length;
+      console.log('➕ Added row:', newRow.id);
+    });
+
+    document.getElementById('btn-delete').addEventListener('click', () => {
+      if (selectedRowId) {
+        grid.deleteRow(selectedRowId);
+        selectedRowId = null;
+        updateHistoryUI();
+        document.getElementById('row-count').textContent = grid.getData().length;
+        console.log('🗑️ Deleted selected row');
+      } else {
+        alert('Click a row to select it first!');
+      }
+    });
+
+    document.getElementById('btn-batch').addEventListener('click', () => {
+      const operations = [];
+      for (let i = 0; i < 5; i++) {
+        operations.push({
+          type: 'insert',
+          index: i,
+          data: generateRow(),
+        });
+      }
+      grid.batch(operations);
+      updateHistoryUI();
+      document.getElementById('row-count').textContent = grid.getData().length;
+      console.log('📦 Batch: Added 5 rows');
+    });
+
+    document.getElementById('btn-update').addEventListener('click', () => {
+      const data = grid.getData();
+      if (data.length > 0) {
+        const randomIndex = Math.floor(Math.random() * data.length);
+        const row = data[randomIndex];
+        grid.updateRow(row.id, { 
+          salary: Math.floor(Math.random() * 80000) + 30000,
+          city: ['Miami', 'Seattle', 'Denver', 'Boston', 'Portland'][Math.floor(Math.random() * 5)]
+        });
+        console.log('✏️ Updated row:', row.id);
+      }
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      // Clear history by performing all undos
+      while (grid.canUndo()) {
+        grid.undo();
+      }
+      updateHistoryUI();
+      console.log('🧹 History cleared');
+    });
+
+    // Initialize
+    initGrid();
+  </script>
+</body>
+</html>

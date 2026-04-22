@@ -20,4 +20,5 @@ export type {
   EditState,
   ScrollPosition,
   ViewportInfo,
+  BatchOperation,
 } from './types/grid';

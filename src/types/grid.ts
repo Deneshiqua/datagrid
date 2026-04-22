@@ -170,6 +170,16 @@ export interface DataGridInstance {
   deleteRow(rowId: string): void;
   /** Update row by ID */
   updateRow(rowId: string, data: Partial<RowData>): void;
+  /** Batch operations (insert, delete, update multiple rows) */
+  batch(operations: BatchOperation[]): void;
+  /** Check if undo is available */
+  canUndo(): boolean;
+  /** Check if redo is available */
+  canRedo(): boolean;
+  /** Undo last operation */
+  undo(): boolean;
+  /** Redo last undone operation */
+  redo(): boolean;
   /** Get selected rows */
   getSelectedRows(): RowData[];
   /** Clear selection */
@@ -193,5 +203,13 @@ export interface DataGridInstance {
   /** Get scroll position */
   getScrollPosition(): ScrollPosition;
 }
+
+export type BatchOperation = {
+  type: 'insert' | 'delete' | 'update';
+  rowId?: string;
+  index?: number;
+  data?: RowData;
+  previousData?: RowData;
+};
 
 export type DataGridOptions = GridConfig & GridEvents;
