@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataGrid Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    h1 {
+      color: #eee;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .grid-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      height: 600px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    #my-grid {
+      height: 100%;
+    }
+    
+    .info {
+      color: #aaa;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    
+    .info span {
+      color: #6c5ce7;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 DataGrid - Virtual Scrolling Demo</h1>
+  
+  <div class="grid-container">
+    <div id="my-grid"></div>
+  </div>
+  
+  <p class="info">
+    Rendering <span id="row-count">0</span> rows with virtual scrolling
+  </p>
+
+  <script type="module">
+    import { DataGrid, ColumnDefinition } from './dist/index.js';
+
+    // Generate 100,000 test rows
+    const generateData = (count) => {
+      const data = [];
+      const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+      const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'];
+      
+      for (let i = 1; i <= count; i++) {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        data.push({
+          id: `row-${i}`,
+          rowNumber: i,
+          firstName,
+          lastName,
+          fullName: `${firstName} ${lastName}`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+          age: Math.floor(Math.random() * 60) + 18,
+          city: cities[Math.floor(Math.random() * cities.length)],
+          salary: Math.floor(Math.random() * 100000) + 30000,
+          active: Math.random() > 0.3,
+        });
+      }
+      return data;
+    };
+
+    // Define columns
+    const columns = [
+      { id: 'rowNumber', field: 'rowNumber', header: '#', width: 70 },
+      { id: 'fullName', field: 'fullName', header: 'Full Name', width: 180 },
+      { id: 'email', field: 'email', header: 'Email', width: 250 },
+      { id: 'age', field: 'age', header: 'Age', width: 80, sortable: true },
+      { id: 'city', field: 'city', header: 'City', width: 130 },
+      { id: 'salary', field: 'salary', header: 'Salary', width: 120, sortable: true },
+      { id: 'active', field: 'active', header: 'Active', width: 80 },
+    ];
+
+    // Initialize grid
+    const container = document.getElementById('my-grid');
+    const grid = new DataGrid(container, {
+      rowHeight: 48,
+      headerHeight: 56,
+      bufferSize: 10,
+      sorting: { multiSort: true },
+      filtering: { enabled: true, quickFilter: true },
+      selection: { mode: 'multiple', checkboxes: true },
+      onScroll: (pos) => {
+        // console.log('Scroll:', pos);
+      },
+      onSort: (states) => {
+        console.log('Sort changed:', states);
+      },
+      onRowClick: (rowId, rowData) => {
+        console.log('Row clicked:', rowId, rowData);
+      },
+    });
+
+    grid.setColumns(columns);
+
+    // Generate and set data
+    const rowCount = 100000;
+    const data = generateData(rowCount);
+    document.getElementById('row-count').textContent = rowCount.toLocaleString();
+    grid.setData(data);
+
+    console.log('✅ DataGrid initialized with', rowCount, 'rows');
+    console.log('📊 Try scrolling, sorting (click headers), and using the quick filter!');
+  </script>
+</body>
+</html>

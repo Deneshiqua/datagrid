@@ -1,0 +1,44 @@
+import { DataGridInstance, DataGridOptions, RowData, ColumnDefinition, ScrollPosition, SortState, FilterState, ViewportInfo } from '../types/grid';
+export declare class DataGrid implements DataGridInstance {
+    private container;
+    private virtualScroll;
+    private dataManager;
+    private columns;
+    private columnOrder;
+    private config;
+    private events;
+    private scrollHandler;
+    private resizeObserver;
+    private isDestroyed;
+    constructor(container: HTMLElement, options?: DataGridOptions);
+    getData(): RowData[];
+    setData(data: RowData[]): void;
+    getRow(rowId: string): RowData | null;
+    insertRow(index: number, row: RowData): void;
+    deleteRow(rowId: string): void;
+    updateRow(rowId: string, data: Partial<RowData>): void;
+    getSelectedRows(): RowData[];
+    clearSelection(): void;
+    getSortState(): SortState[];
+    setSortState(state: SortState[]): void;
+    getFilterState(): FilterState[];
+    setFilterState(state: FilterState[]): void;
+    refresh(): void;
+    scrollToRow(rowId: string): void;
+    getScrollPosition(): ScrollPosition;
+    setScrollPosition(position: ScrollPosition): void;
+    exportToCSV(): string;
+    destroy(): void;
+    setColumns(columns: ColumnDefinition[]): void;
+    getColumn(columnId: string): ColumnDefinition | undefined;
+    updateColumn(columnId: string, updates: Partial<ColumnDefinition>): void;
+    getViewportInfo(): ViewportInfo;
+    private setupContainer;
+    private setupScrollHandling;
+    private setupResizeObserver;
+    private updateVirtualScroll;
+    private render;
+    private injectStyles;
+}
+export default DataGrid;
+//# sourceMappingURL=DataGrid.d.ts.map

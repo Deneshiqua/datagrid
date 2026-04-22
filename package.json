@@ -1,0 +1,24 @@
+{
+  "name": "@deneshiqua/datagrid",
+  "version": "0.1.0",
+  "description": "High-performance JavaScript Data Grid Library",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "datagrid",
+    "grid",
+    "table",
+    "virtual-scrolling"
+  ],
+  "author": "Deneshiqua",
+  "license": "MIT",
+  "repository": "github:Deneshiqua/datagrid",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
