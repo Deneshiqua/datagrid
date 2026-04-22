@@ -383,8 +383,12 @@ export class DataManager {
     const op = filter.operator || 'contains';
     switch (op) {
       case 'equals': return strValue === filterValue;
+      case 'notEquals': return strValue !== filterValue;
       case 'startsWith': return strValue.startsWith(filterValue);
       case 'endsWith': return strValue.endsWith(filterValue);
+      case 'notContains': return !strValue.includes(filterValue);
+      case 'blank': return strValue === '';
+      case 'notBlank': return strValue !== '';
       default: return strValue.includes(filterValue);
     }
   }
@@ -394,9 +398,15 @@ export class DataManager {
     const filterValue = Number(filter.value);
     const op = filter.operator || 'equals';
     switch (op) {
+      case 'equals': return numValue === filterValue;
+      case 'notEquals': return numValue !== filterValue;
       case 'greaterThan': return numValue > filterValue;
       case 'lessThan': return numValue < filterValue;
+      case 'greaterThanOrEqual': return numValue >= filterValue;
+      case 'lessThanOrEqual': return numValue <= filterValue;
       case 'inRange': return Array.isArray(filter.value) && filter.value.length >= 2 && numValue >= Number(filter.value[0]) && numValue <= Number(filter.value[1]);
+      case 'blank': return isNaN(numValue);
+      case 'notBlank': return !isNaN(numValue);
       default: return numValue === filterValue;
     }
   }

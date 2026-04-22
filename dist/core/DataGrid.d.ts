@@ -10,6 +10,7 @@ export declare class DataGrid implements DataGridInstance {
     private resizeObserver;
     private isDestroyed;
     private resizeStartX;
+    private filterPopup;
     constructor(container: HTMLElement, options?: DataGridOptions);
     getData(): RowData[];
     setData(data: RowData[]): void;
@@ -55,6 +56,9 @@ export declare class DataGrid implements DataGridInstance {
     private showContextMenu;
     private hideContextMenu;
     private handleContextMenuAction;
+    private showFilterPopup;
+    private hideFilterPopup;
+    private getFilterOperatorsForType;
     private injectEventHandlers;
 }
 export default DataGrid;

@@ -30,11 +30,11 @@ export class DataGrid implements DataGridInstance {
   private resizeObserver: ResizeObserver | null = null;
   private isDestroyed: boolean = false;
   private resizeStartX: number = 0;
+  private filterPopup: HTMLElement | null = null;
 
   constructor(container: HTMLElement, options: DataGridOptions = {}) {
-    console.log('[DATAGRID] Constructor called, container:', container.tagName, container.id);
     this.container = container;
-    
+
     this.config = {
       rowHeight: options.rowHeight ?? 48,
       headerHeight: options.headerHeight ?? 56,
@@ -211,7 +211,7 @@ export class DataGrid implements DataGridInstance {
     const data = this.getData();
     const columns = this.columnManager.getVisibleColumns();
     const headers = columns.map(c => c.header);
-    const rows = data.map(row => 
+    const rows = data.map(row =>
       columns.map(col => {
         const value = row[col.field];
         const strValue = value === null || value === undefined ? '' : String(value);
@@ -285,16 +285,16 @@ export class DataGrid implements DataGridInstance {
 
   private render(): void {
     if (!this.container || this.isDestroyed) return;
-    console.log('[RENDER] Called, container exists:', !!this.container);
 
     const result = this.virtualScroll.compute();
     const data = this.getData();
     const visibleRange = result.visibleItems;
     const columns = this.columnManager.getColumnsInOrder();
     const sortStates = this.dataManager.getSortState();
+    const filterStates = this.dataManager.getFilterState();
 
     let html = '';
-    
+
     // Header
     html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex; position: relative;">`;
     for (const col of columns) {
@@ -302,8 +302,8 @@ export class DataGrid implements DataGridInstance {
       const width = this.columnManager.getColumnWidth(col.id);
       const pinPos = this.columnManager.getColumnPin(col.id);
       const pinClass = pinPos === 'left' ? ' dg-pin-left' : pinPos === 'right' ? ' dg-pin-right' : '';
-      
-      // Sort state - show arrow for single, number for multi-sort
+
+      // Sort state
       const sortIndex = sortStates.findIndex(s => s.columnId === col.id);
       let sortIcon = '';
       if (sortIndex !== -1) {
@@ -314,11 +314,12 @@ export class DataGrid implements DataGridInstance {
           sortIcon = `<span class="dg-sort-arrow">${direction === 'asc' ? '▲' : '▼'}</span>`;
         }
       }
-      
+
       const hasFilter = this.config.filtering.enabled;
+      const isFiltered = filterStates.some(f => f.columnId === col.id);
       html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" data-pinned="${pinPos || ''}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
         <span class="dg-header-text">${col.header}${sortIcon}</span>
-        ${hasFilter ? `<input type="text" class="dg-filter-input" data-filter-column="${col.id}" placeholder="🔍" />` : ''}
+        ${hasFilter ? `<span class="dg-filter-icon${isFiltered ? ' active' : ''}" data-filter-column="${col.id}">🔍</span>` : ''}
         <div class="dg-resize-handle" data-resize-column="${col.id}"></div>
       </div>`;
     }
@@ -327,15 +328,15 @@ export class DataGrid implements DataGridInstance {
     // Body
     const bodyHeight = this.dataManager.getRowCount() * this.config.rowHeight;
     html += `<div class="dg-body" style="height: ${bodyHeight}px; position: relative;">`;
-    
+
     for (let i = visibleRange.startIndex; i <= visibleRange.endIndex; i++) {
       if (i < 0 || i >= data.length) continue;
       const row = data[i];
       const rowId = this.dataManager.getRowId(row);
       const offsetY = i * this.config.rowHeight;
-      
+
       html += `<div class="dg-row" data-row-id="${rowId}" style="position: absolute; top: ${offsetY}px; height: ${this.config.rowHeight}px; display: flex; width: 100%;">`;
-      
+
       for (const col of columns) {
         if (!this.columnManager.isColumnVisible(col.id)) continue;
         const width = this.columnManager.getColumnWidth(col.id);
@@ -355,9 +356,9 @@ export class DataGrid implements DataGridInstance {
   }
 
   private injectStyles(): void {
-    if (document.getElementById('datagrid-styles-v4')) return;
+    if (document.getElementById('datagrid-styles-v5')) return;
     const style = document.createElement('style');
-    style.id = 'datagrid-styles-v4';
+    style.id = 'datagrid-styles-v5';
     style.textContent = `
       .dg-header {
         background: #f8f9fa;
@@ -384,9 +385,9 @@ export class DataGrid implements DataGridInstance {
       .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
       .dg-sort-arrow { font-size: 10px; color: #6c5ce7; margin-left: 4px; }
       .dg-sort-badge { font-size: 10px; background: #6c5ce7; color: white; padding: 1px 5px; border-radius: 8px; margin-left: 4px; min-width: 18px; text-align: center; }
-      .dg-filter-input { width: 30px; border: none; background: transparent; font-size: 12px; padding: 2px; margin-left: 4px; }
-      .dg-filter-input:focus { width: 80px; background: white; border: 1px solid #6c5ce7; border-radius: 4px; outline: none; }
-      .dg-filter-input.has-value { color: #6c5ce7; font-weight: bold; }
+      .dg-filter-icon { cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 12px; }
+      .dg-filter-icon:hover { background: rgba(108,92,231,0.2); }
+      .dg-filter-icon.active { color: #6c5ce7; font-weight: bold; }
       .dg-resize-handle {
         position: absolute;
         right: -3px;
@@ -445,7 +446,7 @@ export class DataGrid implements DataGridInstance {
 
   private showContextMenu(x: number, y: number, columnId: string): void {
     this.hideContextMenu();
-    
+
     const col = this.columnManager.getColumn(columnId);
     if (!col) return;
 
@@ -456,7 +457,7 @@ export class DataGrid implements DataGridInstance {
     menu.className = 'dg-context-menu';
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
-    
+
     menu.innerHTML = `
       <div class="dg-context-menu-item" data-action="sort-asc">
         <span class="icon">▲</span> Sort Ascending
@@ -487,7 +488,7 @@ export class DataGrid implements DataGridInstance {
       const target = e.target as HTMLElement;
       const item = target.closest('.dg-context-menu-item') as HTMLElement;
       if (!item || item.classList.contains('disabled')) return;
-      
+
       const action = item.dataset.action;
       this.handleContextMenuAction(action!, columnId);
       this.hideContextMenu();
@@ -496,7 +497,6 @@ export class DataGrid implements DataGridInstance {
     document.body.appendChild(menu);
     this.contextMenu = menu;
 
-    // Close on click outside
     setTimeout(() => {
       document.addEventListener('click', this.hideContextMenu.bind(this), { once: true });
     }, 0);
@@ -539,14 +539,134 @@ export class DataGrid implements DataGridInstance {
     this.render();
   }
 
+  private showFilterPopup(colId: string, iconEl: HTMLElement): void {
+    this.hideFilterPopup();
+
+    const col = this.columnManager.getColumn(colId);
+    if (!col) return;
+
+    const rect = iconEl.getBoundingClientRect();
+
+    const popup = document.createElement('div');
+    popup.className = 'dg-filter-popup';
+    popup.style.cssText = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:1000; background:white; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:8px 0; min-width:200px;`;
+
+    const operators = this.getFilterOperatorsForType(col.filterType || col.type || 'text');
+
+    let html = '<div style="padding:8px 16px; border-bottom:1px solid #eee; font-weight:600; color:#333; font-size:13px;">Filter</div>';
+    html += `<div style="padding:8px 16px;"><select class="dg-filter-operator" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px;">`;
+    for (const op of operators) {
+      html += `<option value="${op.value}">${op.label}</option>`;
+    }
+    html += '</select></div>';
+    html += `<div style="padding:8px 16px;"><input type="text" class="dg-filter-value" placeholder="Value..." style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;" /></div>`;
+    html += `<div style="padding:8px 16px; display:flex; gap:8px;">
+      <button class="dg-filter-apply" style="flex:1; padding:8px; background:#6c5ce7; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Apply</button>
+      <button class="dg-filter-clear" style="flex:1; padding:8px; background:#eee; color:#333; border:none; border-radius:6px; cursor:pointer;">Clear</button>
+    </div>`;
+
+    popup.innerHTML = html;
+    document.body.appendChild(popup);
+
+    const applyBtn = popup.querySelector('.dg-filter-apply') as HTMLElement;
+    const clearBtn = popup.querySelector('.dg-filter-clear') as HTMLElement;
+    const operatorSelect = popup.querySelector('.dg-filter-operator') as HTMLSelectElement;
+    const valueInput = popup.querySelector('.dg-filter-value') as HTMLInputElement;
+
+    applyBtn.addEventListener('click', () => {
+      const operator = operatorSelect.value as FilterState['operator'];
+      const value = valueInput.value;
+      if (value.trim()) {
+        this.dataManager.setFilterState([{ columnId: colId, type: col.filterType || 'text', operator, value }]);
+        this.events.onFilter?.(this.dataManager.getFilterState());
+        this.updateVirtualScroll();
+        this.render();
+      }
+      this.hideFilterPopup();
+    });
+
+    clearBtn.addEventListener('click', () => {
+      this.dataManager.setFilterState([]);
+      this.events.onFilter?.([]);
+      this.updateVirtualScroll();
+      this.render();
+      this.hideFilterPopup();
+    });
+
+    valueInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') applyBtn.click();
+      if (e.key === 'Escape') this.hideFilterPopup();
+    });
+
+    popup.addEventListener('click', (e) => e.stopPropagation());
+
+    this.filterPopup = popup;
+
+    setTimeout(() => {
+      document.addEventListener('click', this.hideFilterPopup.bind(this), { once: true });
+    }, 0);
+  }
+
+  private hideFilterPopup(): void {
+    if (this.filterPopup) {
+      this.filterPopup.remove();
+      this.filterPopup = null;
+    }
+  }
+
+  private getFilterOperatorsForType(type: string): { value: string; label: string }[] {
+    switch (type) {
+      case 'text':
+        return [
+          { value: 'contains', label: 'Contains' },
+          { value: 'notContains', label: 'Does not contain' },
+          { value: 'equals', label: 'Equals' },
+          { value: 'notEquals', label: 'Does not equal' },
+          { value: 'startsWith', label: 'Starts with' },
+          { value: 'endsWith', label: 'Ends with' },
+          { value: 'blank', label: 'Is blank' },
+          { value: 'notBlank', label: 'Is not blank' },
+        ];
+      case 'number':
+        return [
+          { value: 'equals', label: 'Equals' },
+          { value: 'notEquals', label: 'Does not equal' },
+          { value: 'greaterThan', label: 'Greater than' },
+          { value: 'lessThan', label: 'Less than' },
+          { value: 'greaterThanOrEqual', label: 'Greater than or equal' },
+          { value: 'lessThanOrEqual', label: 'Less than or equal' },
+          { value: 'inRange', label: 'In range' },
+          { value: 'blank', label: 'Is blank' },
+          { value: 'notBlank', label: 'Is not blank' },
+        ];
+      case 'date':
+        return [
+          { value: 'equals', label: 'Equals' },
+          { value: 'notEquals', label: 'Does not equal' },
+          { value: 'greaterThan', label: 'Greater than' },
+          { value: 'lessThan', label: 'Less than' },
+          { value: 'inRange', label: 'In range' },
+          { value: 'blank', label: 'Is blank' },
+          { value: 'notBlank', label: 'Is not blank' },
+        ];
+      case 'boolean':
+        return [
+          { value: 'true', label: 'True' },
+          { value: 'false', label: 'False' },
+        ];
+      default:
+        return [
+          { value: 'contains', label: 'Contains' },
+          { value: 'equals', label: 'Equals' },
+        ];
+    }
+  }
+
   private injectEventHandlers(): void {
     if (!this.container) return;
-    console.log('[INJECT] Container children:', this.container.children.length);
-    console.log('[INJECT] Looking for resize handles...');
 
     // Resize handles
     const resizeHandles = this.container.querySelectorAll('.dg-resize-handle');
-    console.log('[INJECT] Found resize handles:', resizeHandles.length);
     resizeHandles.forEach(handle => {
       const colId = (handle as HTMLElement).dataset.resizeColumn;
       if (!colId) return;
@@ -573,7 +693,6 @@ export class DataGrid implements DataGridInstance {
       handle.addEventListener('mousedown', (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('[RESIZE] mousedown on column:', colId);
         isResizing = true;
         this.resizeStartX = (e as MouseEvent).clientX;
         handle.classList.add('dg-resizing');
@@ -588,11 +707,10 @@ export class DataGrid implements DataGridInstance {
       const colId = (cell as HTMLElement).dataset.columnId;
       if (!colId) return;
 
-      // Sort on click
       cell.addEventListener('click', (e) => {
-        // Don't sort if clicking resize handle
         if ((e.target as HTMLElement).classList.contains('dg-resize-handle')) return;
-        
+        if ((e.target as HTMLElement).classList.contains('dg-filter-icon')) return;
+
         const col = this.columnManager.getColumn(colId);
         if (!col || col.sortable === false) return;
 
@@ -601,19 +719,16 @@ export class DataGrid implements DataGridInstance {
         const existing = currentSort.find(s => s.columnId === colId);
 
         if (isMultiSort) {
-          // Multi-sort: toggle this column's direction, keep others
           if (existing) {
             if (existing.direction === 'asc') {
               this.dataManager.addSortState(colId, 'desc');
             } else {
-              // Remove this column from sort
               this.dataManager.setSortState(currentSort.filter(s => s.columnId !== colId));
             }
           } else {
             this.dataManager.addSortState(colId, 'asc');
           }
         } else {
-          // Single sort: clear others first
           if (!existing) {
             this.dataManager.clearSortState();
             this.dataManager.addSortState(colId, 'asc');
@@ -627,37 +742,19 @@ export class DataGrid implements DataGridInstance {
         this.render();
       });
 
-      // Right-click for context menu
       cell.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const mouseEvent = e as MouseEvent;
         this.showContextMenu(mouseEvent.clientX, mouseEvent.clientY, colId);
       });
-    });
 
-    // Filter inputs
-    const filterInputs = this.container.querySelectorAll('.dg-filter-input');
-    filterInputs.forEach(input => {
-      const colId = (input as HTMLElement).dataset.filterColumn;
-      if (!colId) return;
-
-      input.addEventListener('input', (e) => {
-        const value = (e.target as HTMLInputElement).value;
-        if (value.trim()) {
-          this.dataManager.setFilterState([{ columnId: colId, type: 'text', operator: 'contains', value }]);
-          input.classList.add('has-value');
-        } else {
-          this.dataManager.setFilterState([]);
-          input.classList.remove('has-value');
-        }
-        this.events.onFilter?.(this.dataManager.getFilterState());
-        this.updateVirtualScroll();
-        this.render();
-      });
-
-      input.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
+      const filterIcon = cell.querySelector('.dg-filter-icon');
+      if (filterIcon) {
+        filterIcon.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showFilterPopup(colId, filterIcon as HTMLElement);
+        });
+      }
     });
 
     // Row click

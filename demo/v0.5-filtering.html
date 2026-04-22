@@ -100,7 +100,7 @@
   </style>
 </head>
 <body>
-  <h1>🚀 DataGrid</h1>
+  <h1><a href="/demo/" style="color:#fff; text-decoration:none;">🚀 DataGrid</a></h1>
   <p class="version">v0.5.0 - Epic 5: Filtering System</p>
   
   <div class="feature-badge">
@@ -138,14 +138,14 @@
     let grid;
 
     const columns = [
-      { id: 'id', field: 'id', header: 'ID', width: 70, sortable: true },
-      { id: 'name', field: 'name', header: 'Full Name', width: 180, sortable: true },
-      { id: 'email', field: 'email', header: 'Email', width: 220, sortable: true },
-      { id: 'age', field: 'age', header: 'Age', width: 80, sortable: true },
-      { id: 'city', field: 'city', header: 'City', width: 130, sortable: true },
-      { id: 'department', field: 'department', header: 'Department', width: 130, sortable: true },
-      { id: 'salary', field: 'salary', header: 'Salary ($)', width: 120, sortable: true },
-      { id: 'active', field: 'active', header: 'Active', width: 80, sortable: true },
+      { id: 'id', field: 'id', header: 'ID', width: 70, sortable: true, filterType: 'number' },
+      { id: 'name', field: 'name', header: 'Full Name', width: 180, sortable: true, filterType: 'text' },
+      { id: 'email', field: 'email', header: 'Email', width: 220, sortable: true, filterType: 'text' },
+      { id: 'age', field: 'age', header: 'Age', width: 80, sortable: true, filterType: 'number' },
+      { id: 'city', field: 'city', header: 'City', width: 130, sortable: true, filterType: 'text' },
+      { id: 'department', field: 'department', header: 'Department', width: 130, sortable: true, filterType: 'text' },
+      { id: 'salary', field: 'salary', header: 'Salary ($)', width: 120, sortable: true, filterType: 'number' },
+      { id: 'active', field: 'active', header: 'Active', width: 80, sortable: true, filterType: 'boolean' },
     ];
 
     const generateData = (count) => {

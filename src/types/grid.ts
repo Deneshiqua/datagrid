@@ -35,6 +35,10 @@ export interface ColumnDefinition {
   sortable?: boolean;
   /** Is column filterable */
   filterable?: boolean;
+      /** Column filter type (defaults to 'text') */
+  filterType?: 'text' | 'number' | 'date' | 'boolean';
+  /** Column data type hint (optional) */
+  type?: 'text' | 'number' | 'date' | 'boolean';
   /** Cell editor configuration */
   editor?: CellEditor;
   /** Is cell editable */
@@ -64,7 +68,7 @@ export interface FilterState {
   columnId: string;
   type: 'text' | 'number' | 'date' | 'set' | 'boolean';
   value: CellValue | CellValue[];
-  operator?: 'contains' | 'equals' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'inRange';
+  operator?: 'contains' | 'notContains' | 'equals' | 'notEquals' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'greaterThanOrEqual' | 'lessThanOrEqual' | 'inRange' | 'blank' | 'notBlank' | 'true' | 'false';
 }
 
 export type SelectionMode = 'none' | 'single' | 'multiple';
