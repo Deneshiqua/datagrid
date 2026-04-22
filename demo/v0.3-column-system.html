@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataGrid v0.3 - Column System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #eee;
+    }
+    
+    h1 { text-align: center; margin-bottom: 5px; color: #fff; }
+    .version { text-align: center; color: #6c5ce7; font-weight: bold; margin-bottom: 15px; }
+    
+    .feature-badge {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .feature-badge span {
+      background: rgba(108, 92, 231, 0.2);
+      color: #a29bfe;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin: 0 4px;
+      display: inline-block;
+    }
+    
+    .feature-badge span.completed {
+      background: rgba(0, 206, 201, 0.2);
+      color: #00cec9;
+    }
+    
+    .controls {
+      max-width: 1400px;
+      margin: 0 auto 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .controls button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .controls button:hover { transform: translateY(-2px); }
+    .btn-primary { background: #6c5ce7; color: white; }
+    .btn-secondary { background: #2d3436; color: white; }
+    .btn-danger { background: #d63031; color: white; }
+    .btn-success { background: #00b894; color: white; }
+    
+    .grid-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      height: 500px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    
+    #my-grid { height: 100%; }
+    
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .info span { color: #6c5ce7; font-weight: bold; }
+    
+    /* DataGrid Styles */
+    .dg-header { background: #f8f9fa; border-bottom: 2px solid #dee2e6; }
+    .dg-header-cell { font-weight: 600; color: #495057; cursor: pointer; user-select: none; position: relative; }
+    .dg-header-cell:hover { background: #e9ecef; }
+    .dg-header-cell.dg-pin-left { background: #e8f4f8; border-left: 3px solid #0984e3; }
+    .dg-header-cell.dg-pin-right { background: #fff9e6; border-right: 3px solid #fdcb6e; }
+    .dg-row { border-bottom: 1px solid #f1f3f5; }
+    .dg-row:hover { background: #f8f9fa; }
+    .dg-cell { color: #212529; font-size: 14px; }
+    .dg-resize-handle:hover { background: rgba(108, 92, 231, 0.5) !important; }
+    .dg-resize-handle.dg-resizing { background: #6c5ce7 !important; }
+    
+    .instructions {
+      max-width: 1400px;
+      margin: 20px auto;
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .instructions h3 { color: #fff; margin-bottom: 10px; }
+    .instructions ul { margin-left: 20px; }
+    .instructions li { margin: 5px 0; }
+    .instructions code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #00cec9; }
+  </style>
+</head>
+<body>
+  <h1>🚀 DataGrid</h1>
+  <p class="version">v0.3.0 - Epic 3: Column System</p>
+  
+  <div class="feature-badge">
+    <span class="completed">✅ Virtual Scrolling</span>
+    <span class="completed">✅ Undo/Redo</span>
+    <span class="completed">✅ Column Resize</span>
+    <span class="completed">✅ Column Pin</span>
+    <span class="completed">✅ Column Sort</span>
+    <span>⏳ Filtering</span>
+    <span>⏳ Selection</span>
+  </div>
+  
+  <div class="controls">
+    <button class="btn-primary" id="btn-pin-left">📌 Pin Name (Left)</button>
+    <button class="btn-secondary" id="btn-pin-right">📌 Pin Salary (Right)</button>
+    <button class="btn-danger" id="btn-unpin">🔓 Unpin All</button>
+    <button class="btn-success" id="btn-toggle-email">👁️ Toggle Email</button>
+    <button class="btn-secondary" id="btn-reset">🔄 Reset Columns</button>
+  </div>
+  
+  <div class="instructions">
+    <h3>🎮 Column Features Test:</h3>
+    <ul>
+      <li><strong>Resize:</strong> Column kenarlarındaki <code>||</code> çubuklarını sürükle</li>
+      <li><strong>Sort:</strong> Header'lara tıkla (ASC → DESC → none)</li>
+      <li><strong>Pin:</strong> Butonlarla Name ve Salary kolonlarını sabitle</li>
+      <li><strong>Hide:</strong> Toggle Email ile kolonu göster/gizle</li>
+    </ul>
+  </div>
+  
+  <div class="grid-container">
+    <div id="my-grid"></div>
+  </div>
+  
+  <p class="info">🎯 <span id="row-count">0</span> rows | Column resize, pin, and sort enabled</p>
+
+  <script type="module">
+    import { DataGrid } from './dist/datagrid.esm.js';
+
+    let grid;
+
+    const columns = [
+      { id: 'id', field: 'id', header: 'ID', width: 70 },
+      { id: 'name', field: 'name', header: 'Full Name', width: 180, sortable: true },
+      { id: 'email', field: 'email', header: 'Email', width: 220, sortable: true },
+      { id: 'age', field: 'age', header: 'Age', width: 80, sortable: true },
+      { id: 'city', field: 'city', header: 'City', width: 130 },
+      { id: 'department', field: 'department', header: 'Department', width: 130 },
+      { id: 'salary', field: 'salary', header: 'Salary ($)', width: 120, sortable: true },
+      { id: 'active', field: 'active', header: 'Active', width: 80 },
+    ];
+
+    const generateData = (count) => {
+      const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+      const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Diego'];
+      const data = [];
+      for (let i = 1; i <= count; i++) {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        data.push({
+          id: i,
+          name: `${firstName} ${lastName}`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+          age: Math.floor(Math.random() * 40) + 20,
+          city: cities[Math.floor(Math.random() * cities.length)],
+          department: ['Engineering', 'Sales', 'Marketing', 'HR'][Math.floor(Math.random() * 4)],
+          salary: Math.floor(Math.random() * 60000) + 40000,
+          active: Math.random() > 0.2,
+        });
+      }
+      return data;
+    };
+
+    function initGrid() {
+      const container = document.getElementById('my-grid');
+      grid = new DataGrid(container, {
+        rowHeight: 48,
+        headerHeight: 52,
+        bufferSize: 10,
+        sorting: { multiSort: true },
+        onSort: (states) => console.log('Sort changed:', states),
+        onRowClick: (rowId, rowData) => console.log('Row clicked:', rowId),
+      });
+
+      grid.setColumns(columns);
+      grid.setData(generateData(1000));
+      
+      document.getElementById('row-count').textContent = '1,000';
+      console.log('✅ DataGrid v0.3 initialized');
+    }
+
+    // Button handlers
+    document.getElementById('btn-pin-left').addEventListener('click', () => {
+      grid.pinColumnLeft('name');
+      console.log('📌 Pinned Name to left');
+    });
+
+    document.getElementById('btn-pin-right').addEventListener('click', () => {
+      grid.pinColumnRight('salary');
+      console.log('📌 Pinned Salary to right');
+    });
+
+    document.getElementById('btn-unpin').addEventListener('click', () => {
+      grid.unpinColumn('name');
+      grid.unpinColumn('salary');
+      console.log('🔓 Unpinned all columns');
+    });
+
+    let emailVisible = true;
+    document.getElementById('btn-toggle-email').addEventListener('click', () => {
+      grid.toggleColumnVisibility('email');
+      emailVisible = !emailVisible;
+      console.log(emailVisible ? '👁️ Email visible' : '👁️ Email hidden');
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      grid.setColumns(columns);
+      emailVisible = true;
+      console.log('🔄 Columns reset');
+    });
+
+    initGrid();
+  </script>
+</body>
+</html>

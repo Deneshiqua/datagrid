@@ -17,18 +17,21 @@ import {
 } from '../types/grid';
 import { VirtualScroll } from './VirtualScroll';
 import { DataManager } from './DataManager';
+import { ColumnManager } from './ColumnManager';
 
 export class DataGrid implements DataGridInstance {
   private container: HTMLElement | null = null;
   private virtualScroll: VirtualScroll;
   private dataManager: DataManager;
-  private columns: Map<string, ColumnDefinition> = new Map();
-  private columnOrder: string[] = [];
+  private columnManager: ColumnManager;
   private config: Required<GridConfig>;
   private events: GridEvents;
   private scrollHandler: ((e: Event) => void) | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private isDestroyed: boolean = false;
+
+  // Column resize tracking
+  private resizeStartX: number = 0;
 
   constructor(container: HTMLElement, options: DataGridOptions = {}) {
     this.container = container;
@@ -73,6 +76,8 @@ export class DataGrid implements DataGridInstance {
       sortable: true,
       filterable: this.config.filtering.enabled,
     });
+
+    this.columnManager = new ColumnManager();
 
     this.setupContainer();
     this.setupScrollHandling();
@@ -120,29 +125,16 @@ export class DataGrid implements DataGridInstance {
     this.render();
   }
 
-  canUndo(): boolean {
-    return this.dataManager.canUndo();
-  }
-
-  canRedo(): boolean {
-    return this.dataManager.canRedo();
-  }
-
+  canUndo(): boolean { return this.dataManager.canUndo(); }
+  canRedo(): boolean { return this.dataManager.canRedo(); }
   undo(): boolean {
     const result = this.dataManager.undo();
-    if (result) {
-      this.updateVirtualScroll();
-      this.render();
-    }
+    if (result) { this.updateVirtualScroll(); this.render(); }
     return result;
   }
-
   redo(): boolean {
     const result = this.dataManager.redo();
-    if (result) {
-      this.updateVirtualScroll();
-      this.render();
-    }
+    if (result) { this.updateVirtualScroll(); this.render(); }
     return result;
   }
 
@@ -150,37 +142,78 @@ export class DataGrid implements DataGridInstance {
   // Public API - Selection
   // ============================================
 
-  getSelectedRows(): RowData[] {
-    // TODO: Implement selection tracking
-    return [];
-  }
-
-  clearSelection(): void {
-    // TODO: Implement selection clearing
-  }
+  getSelectedRows(): RowData[] { return []; }
+  clearSelection(): void {}
 
   // ============================================
   // Public API - Sorting & Filtering
   // ============================================
 
-  getSortState(): SortState[] {
-    return this.dataManager.getSortState();
-  }
-
+  getSortState(): SortState[] { return this.dataManager.getSortState(); }
   setSortState(state: SortState[]): void {
     this.dataManager.setSortState(state);
     this.events.onSort?.(state);
     this.render();
   }
 
-  getFilterState(): FilterState[] {
-    return this.dataManager.getFilterState();
-  }
-
+  getFilterState(): FilterState[] { return this.dataManager.getFilterState(); }
   setFilterState(state: FilterState[]): void {
     this.dataManager.setFilterState(state);
     this.events.onFilter?.(state);
     this.updateVirtualScroll();
+    this.render();
+  }
+
+  // ============================================
+  // Public API - Columns
+  // ============================================
+
+  setColumns(columns: ColumnDefinition[]): void {
+    this.columnManager = new ColumnManager(columns);
+    this.render();
+  }
+
+  getColumn(columnId: string): ColumnDefinition | undefined {
+    return this.columnManager.getColumn(columnId);
+  }
+
+  updateColumn(columnId: string, updates: Partial<ColumnDefinition>): void {
+    this.columnManager.updateColumn(columnId, updates);
+    this.render();
+  }
+
+  setColumnWidth(columnId: string, width: number): void {
+    this.columnManager.setColumnWidth(columnId, width);
+    this.render();
+  }
+
+  pinColumnLeft(columnId: string): void {
+    this.columnManager.pinColumnLeft(columnId);
+    this.render();
+  }
+
+  pinColumnRight(columnId: string): void {
+    this.columnManager.pinColumnRight(columnId);
+    this.render();
+  }
+
+  unpinColumn(columnId: string): void {
+    this.columnManager.unpinColumn(columnId);
+    this.render();
+  }
+
+  toggleColumnPin(columnId: string): void {
+    this.columnManager.toggleColumnPin(columnId);
+    this.render();
+  }
+
+  toggleColumnVisibility(columnId: string): void {
+    this.columnManager.toggleColumnVisibility(columnId);
+    this.render();
+  }
+
+  moveColumn(fromIndex: number, toIndex: number): void {
+    this.columnManager.moveColumn(fromIndex, toIndex);
     this.render();
   }
 
@@ -211,12 +244,14 @@ export class DataGrid implements DataGridInstance {
 
   setScrollPosition(position: ScrollPosition): void {
     const maxScrollTop = this.virtualScroll.getScrollRange();
-    
     const newScrollTop = Math.max(0, Math.min(position.scrollTop, maxScrollTop));
-    
     this.virtualScroll.setConfig({ scrollTop: newScrollTop });
     this.render();
     this.events.onScroll?.(position);
+  }
+
+  getViewportInfo(): ViewportInfo {
+    return this.virtualScroll.compute().viewport;
   }
 
   // ============================================
@@ -225,11 +260,11 @@ export class DataGrid implements DataGridInstance {
 
   exportToCSV(): string {
     const data = this.getData();
-    const headers = this.columnOrder.map(id => this.columns.get(id)?.header || id);
+    const columns = this.columnManager.getVisibleColumns();
+    const headers = columns.map(c => c.header);
     const rows = data.map(row => 
-      this.columnOrder.map(id => {
-        const value = row[id];
-        // Escape quotes and wrap in quotes if contains comma
+      columns.map(col => {
+        const value = row[col.field];
         const strValue = value === null || value === undefined ? '' : String(value);
         return strValue.includes(',') ? `"${strValue.replace(/"/g, '""')}"` : strValue;
       }).join(',')
@@ -243,54 +278,14 @@ export class DataGrid implements DataGridInstance {
 
   destroy(): void {
     this.isDestroyed = true;
-    
     if (this.scrollHandler && this.container) {
       this.container.removeEventListener('scroll', this.scrollHandler);
     }
-    
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
     }
-    
     this.container = null;
-  }
-
-  // ============================================
-  // Column Management
-  // ============================================
-
-  setColumns(columns: ColumnDefinition[]): void {
-    this.columns.clear();
-    this.columnOrder = [];
-    
-    for (const col of columns) {
-      this.columns.set(col.id, col);
-      this.columnOrder.push(col.id);
-    }
-    
-    this.render();
-  }
-
-  getColumn(columnId: string): ColumnDefinition | undefined {
-    return this.columns.get(columnId);
-  }
-
-  updateColumn(columnId: string, updates: Partial<ColumnDefinition>): void {
-    const col = this.columns.get(columnId);
-    if (col) {
-      this.columns.set(columnId, { ...col, ...updates });
-      this.render();
-    }
-  }
-
-  // ============================================
-  // Viewport Info
-  // ============================================
-
-  getViewportInfo(): ViewportInfo {
-    const result = this.virtualScroll.compute();
-    return result.viewport;
   }
 
   // ============================================
@@ -299,12 +294,8 @@ export class DataGrid implements DataGridInstance {
 
   private setupContainer(): void {
     if (!this.container) return;
-    
-    // Set container styles
     this.container.style.overflow = 'auto';
     this.container.style.position = 'relative';
-    
-    // Initial measurement
     const rect = this.container.getBoundingClientRect();
     this.virtualScroll.setConfig({
       containerHeight: rect.height - this.config.headerHeight,
@@ -313,19 +304,15 @@ export class DataGrid implements DataGridInstance {
 
   private setupScrollHandling(): void {
     if (!this.container) return;
-
     let ticking = false;
-    
     this.scrollHandler = (_e: Event) => {
       if (!ticking) {
         requestAnimationFrame(() => {
           if (this.container && !this.isDestroyed) {
             const scrollTop = this.container.scrollTop;
             const scrollLeft = this.container.scrollLeft;
-            
             this.virtualScroll.setConfig({ scrollTop });
             this.render();
-            
             this.events.onScroll?.({ scrollTop, scrollLeft });
           }
           ticking = false;
@@ -333,13 +320,11 @@ export class DataGrid implements DataGridInstance {
         ticking = true;
       }
     };
-    
     this.container.addEventListener('scroll', this.scrollHandler);
   }
 
   private setupResizeObserver(): void {
     if (!this.container) return;
-
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { height } = entry.contentRect;
@@ -350,7 +335,6 @@ export class DataGrid implements DataGridInstance {
         this.render();
       }
     });
-
     this.resizeObserver.observe(this.container);
   }
 
@@ -358,7 +342,6 @@ export class DataGrid implements DataGridInstance {
     const containerHeight = this.container?.clientHeight 
       ? this.container.clientHeight - this.config.headerHeight 
       : 600;
-    
     this.virtualScroll.setConfig({
       itemCount: this.dataManager.getRowCount(),
       itemHeight: this.config.rowHeight,
@@ -372,18 +355,24 @@ export class DataGrid implements DataGridInstance {
     const result = this.virtualScroll.compute();
     const data = this.getData();
     const visibleRange = result.visibleItems;
+    const columns = this.columnManager.getColumnsInOrder();
+    void columns; // Used in loop below
 
-    // Build HTML
     let html = '';
     
-    // Header
+    // Header with resize handles
     html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex;">`;
-    for (const colId of this.columnOrder) {
-      const col = this.columns.get(colId);
-      if (!col || col.visible === false) continue;
-      html += `<div class="dg-header-cell" style="width: ${col.width || 100}px; min-width: ${col.minWidth || 50}px;">
-        ${col.header}
+    for (const col of columns) {
+      if (!this.columnManager.isColumnVisible(col.id)) continue;
+      const width = this.columnManager.getColumnWidth(col.id);
+      const pinClass = this.columnManager.getColumnPin(col.id) === 'left' ? ' dg-pin-left' : 
+                       this.columnManager.getColumnPin(col.id) === 'right' ? ' dg-pin-right' : '';
+      html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+        <span class="dg-header-text">${col.header}</span>
+        ${col.sortable !== false ? '<span class="dg-sort-icon"></span>' : ''}
       </div>`;
+      // Resize handle
+      html += `<div class="dg-resize-handle" data-resize-column="${col.id}"></div>`;
     }
     html += '</div>';
 
@@ -391,81 +380,166 @@ export class DataGrid implements DataGridInstance {
     const bodyHeight = this.dataManager.getRowCount() * this.config.rowHeight;
     html += `<div class="dg-body" style="height: ${bodyHeight}px; position: relative;">`;
     
-    // Visible rows only
     for (let i = visibleRange.startIndex; i <= visibleRange.endIndex; i++) {
       if (i < 0 || i >= data.length) continue;
-      
       const row = data[i];
       const rowId = this.dataManager.getRowId(row);
       const offsetY = i * this.config.rowHeight;
       
       html += `<div class="dg-row" data-row-id="${rowId}" style="position: absolute; top: ${offsetY}px; height: ${this.config.rowHeight}px; display: flex; width: 100%;">`;
       
-      for (const colId of this.columnOrder) {
-        const col = this.columns.get(colId);
-        if (!col || col.visible === false) continue;
-        
+      for (const col of columns) {
+        if (!this.columnManager.isColumnVisible(col.id)) continue;
+        const width = this.columnManager.getColumnWidth(col.id);
         const value = row[col.field];
-        html += `<div class="dg-cell" data-column-id="${colId}" style="width: ${col.width || 100}px; min-width: ${col.minWidth || 50}px;">
-          ${col.renderCell ? col.renderCell(value, row, i) : value}
+        const displayValue = value === null || value === undefined ? '' : String(value);
+        html += `<div class="dg-cell" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+          ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
         </div>`;
       }
       
       html += '</div>';
     }
-    
     html += '</div>';
 
-    // Apply basic styles if not already
     this.injectStyles();
-
-    // Set innerHTML
+    this.injectEventHandlers();
     this.container.innerHTML = html;
   }
 
   private injectStyles(): void {
-    if (document.getElementById('datagrid-styles')) return;
-    
+    if (document.getElementById('datagrid-styles-v3')) return;
     const style = document.createElement('style');
-    style.id = 'datagrid-styles';
+    style.id = 'datagrid-styles-v3';
     style.textContent = `
       .dg-header {
-        background: #f5f5f5;
-        border-bottom: 1px solid #ddd;
+        background: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
         position: sticky;
         top: 0;
-        z-index: 1;
+        z-index: 2;
+        user-select: none;
       }
       .dg-header-cell {
         padding: 0 12px;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         font-weight: 600;
+        color: #495057;
         font-size: 14px;
-        border-right: 1px solid #eee;
-        user-select: none;
+        border-right: 1px solid #e9ecef;
+        cursor: pointer;
+        position: relative;
+        flex-shrink: 0;
       }
-      .dg-body {
-        overflow: hidden;
+      .dg-header-cell:hover { background: #e9ecef; }
+      .dg-header-cell.dg-pin-left { position: sticky; left: 0; z-index: 3; background: #f8f9fa; }
+      .dg-header-cell.dg-pin-right { position: sticky; right: 0; z-index: 3; background: #f8f9fa; }
+      .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .dg-sort-icon { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #adb5bd; margin-left: 8px; }
+      .dg-resize-handle {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        cursor: col-resize;
+        z-index: 4;
+        background: transparent;
       }
-      .dg-row {
-        border-bottom: 1px solid #eee;
-      }
-      .dg-row:hover {
-        background: #fafafa;
-      }
+      .dg-resize-handle:hover { background: rgba(108, 92, 231, 0.3); }
+      .dg-resize-handle.dg-resizing { background: #6c5ce7; }
+      .dg-body { overflow: hidden; }
+      .dg-row { border-bottom: 1px solid #f1f3f5; }
+      .dg-row:hover { background: #f8f9fa; }
       .dg-cell {
         padding: 0 12px;
         display: flex;
         align-items: center;
         font-size: 14px;
+        color: #212529;
         border-right: 1px solid #f0f0f0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        flex-shrink: 0;
       }
     `;
     document.head.appendChild(style);
+  }
+
+  private injectEventHandlers(): void {
+    if (!this.container) return;
+
+    // Resize handles
+    const resizeHandles = this.container.querySelectorAll('.dg-resize-handle');
+    resizeHandles.forEach(handle => {
+      const colId = (handle as HTMLElement).dataset.resizeColumn;
+      if (!colId) return;
+
+      let isResizing = false;
+
+      const onMouseMove = (e: MouseEvent) => {
+        if (!isResizing) return;
+        const deltaX = e.clientX - this.resizeStartX;
+        const currentWidth = this.columnManager.getColumnWidth(colId);
+        this.columnManager.setColumnWidth(colId, currentWidth + deltaX);
+        this.resizeStartX = e.clientX;
+        this.render();
+      };
+
+      const onMouseUp = () => {
+        isResizing = false;
+        handle.classList.remove('dg-resizing');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+
+      handle.addEventListener('mousedown', (e: Event) => {
+        isResizing = true;
+        this.resizeStartX = (e as MouseEvent).clientX;
+        handle.classList.add('dg-resizing');
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    });
+
+    // Header click for sort
+    const headerCells = this.container.querySelectorAll('.dg-header-cell');
+    headerCells.forEach(cell => {
+      const colId = (cell as HTMLElement).dataset.columnId;
+      if (!colId) return;
+
+      cell.addEventListener('click', () => {
+        const col = this.columnManager.getColumn(colId);
+        if (!col || col.sortable === false) return;
+
+        const currentSort = this.dataManager.getSortState();
+        const existing = currentSort.find(s => s.columnId === colId);
+
+        if (!existing) {
+          this.dataManager.addSortState(colId, 'asc');
+        } else if (existing.direction === 'asc') {
+          this.dataManager.addSortState(colId, 'desc');
+        } else {
+          this.dataManager.clearSortState();
+        }
+        this.events.onSort?.(this.dataManager.getSortState());
+        this.render();
+      });
+    });
+
+    // Row click
+    const rows = this.container.querySelectorAll('.dg-row');
+    rows.forEach(row => {
+      row.addEventListener('click', () => {
+        const rowId = (row as HTMLElement).dataset.rowId;
+        if (!rowId) return;
+        const rowData = this.dataManager.getRowById(rowId);
+        if (rowData) this.events.onRowClick?.(rowId, rowData);
+      });
+    });
   }
 }
 

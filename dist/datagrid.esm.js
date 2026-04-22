@@ -483,15 +483,196 @@ var DataManager = class {
   }
 };
 
+// src/core/ColumnManager.ts
+var ColumnManager = class {
+  constructor(columns = []) {
+    this.columns = /* @__PURE__ */ new Map();
+    this.columnOrder = [];
+    this.columnStates = /* @__PURE__ */ new Map();
+    this.listeners = /* @__PURE__ */ new Set();
+    columns.forEach((col) => this.addColumn(col));
+  }
+  // ============================================
+  // Column CRUD
+  // ============================================
+  addColumn(col) {
+    this.columns.set(col.id, { ...col });
+    this.columnOrder.push(col.id);
+    this.columnStates.set(col.id, {
+      width: col.width || 100,
+      minWidth: col.minWidth || 50,
+      maxWidth: col.maxWidth || 1e3,
+      visible: col.visible !== false,
+      pinned: col.pinned || null,
+      order: this.columnOrder.length - 1
+    });
+  }
+  getColumn(id) {
+    return this.columns.get(id);
+  }
+  getColumns() {
+    return this.getColumnsInOrder();
+  }
+  getColumnsInOrder() {
+    const pinnedLeft = this.columnOrder.filter((id) => this.columnStates.get(id)?.pinned === "left").sort((a, b) => (this.columnStates.get(a)?.order || 0) - (this.columnStates.get(b)?.order || 0));
+    const unpinned = this.columnOrder.filter((id) => !this.columnStates.get(id)?.pinned).sort((a, b) => (this.columnStates.get(a)?.order || 0) - (this.columnStates.get(b)?.order || 0));
+    const pinnedRight = this.columnOrder.filter((id) => this.columnStates.get(id)?.pinned === "right").sort((a, b) => (this.columnStates.get(a)?.order || 0) - (this.columnStates.get(b)?.order || 0));
+    return [...pinnedLeft, ...unpinned, ...pinnedRight].map((id) => this.columns.get(id)).filter(Boolean);
+  }
+  getVisibleColumns() {
+    return this.getColumnsInOrder().filter((col) => this.isColumnVisible(col.id));
+  }
+  updateColumn(id, updates) {
+    const col = this.columns.get(id);
+    if (col) {
+      this.columns.set(id, { ...col, ...updates });
+      this.notifyListeners();
+    }
+  }
+  deleteColumn(id) {
+    this.columns.delete(id);
+    this.columnStates.delete(id);
+    this.columnOrder = this.columnOrder.filter((colId) => colId !== id);
+    this.notifyListeners();
+  }
+  // ============================================
+  // Column State Operations
+  // ============================================
+  isColumnVisible(id) {
+    return this.columnStates.get(id)?.visible ?? true;
+  }
+  setColumnVisible(id, visible) {
+    const state = this.columnStates.get(id);
+    if (state) {
+      state.visible = visible;
+      this.notifyListeners();
+    }
+  }
+  toggleColumnVisibility(id) {
+    const state = this.columnStates.get(id);
+    if (state) {
+      state.visible = !state.visible;
+      this.notifyListeners();
+    }
+  }
+  // ============================================
+  // Column Sizing
+  // ============================================
+  getColumnWidth(id) {
+    return this.columnStates.get(id)?.width || 100;
+  }
+  setColumnWidth(id, width) {
+    const state = this.columnStates.get(id);
+    if (state) {
+      state.width = Math.max(state.minWidth, Math.min(state.maxWidth, width));
+      this.notifyListeners();
+    }
+  }
+  getColumnMinWidth(id) {
+    return this.columnStates.get(id)?.minWidth || 50;
+  }
+  getColumnMaxWidth(id) {
+    return this.columnStates.get(id)?.maxWidth || 1e3;
+  }
+  // ============================================
+  // Column Reorder
+  // ============================================
+  moveColumn(fromIndex, toIndex) {
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || toIndex < 0) return;
+    if (fromIndex >= this.columnOrder.length || toIndex >= this.columnOrder.length) return;
+    const item = this.columnOrder.splice(fromIndex, 1)[0];
+    this.columnOrder.splice(toIndex, 0, item);
+    this.columnOrder.forEach((id, idx) => {
+      const state = this.columnStates.get(id);
+      if (state) state.order = idx;
+    });
+    this.notifyListeners();
+  }
+  getColumnIndex(id) {
+    return this.columnOrder.indexOf(id);
+  }
+  reorderColumns(newOrder) {
+    if (newOrder.length !== this.columnOrder.length) return;
+    if (!newOrder.every((id) => this.columnOrder.includes(id))) return;
+    this.columnOrder = [...newOrder];
+    this.columnOrder.forEach((id, idx) => {
+      const state = this.columnStates.get(id);
+      if (state) state.order = idx;
+    });
+    this.notifyListeners();
+  }
+  // ============================================
+  // Column Pin
+  // ============================================
+  getColumnPin(id) {
+    return this.columnStates.get(id)?.pinned || null;
+  }
+  setColumnPin(id, position) {
+    const state = this.columnStates.get(id);
+    if (state) {
+      state.pinned = position;
+      this.notifyListeners();
+    }
+  }
+  pinColumnLeft(id) {
+    this.setColumnPin(id, "left");
+  }
+  pinColumnRight(id) {
+    this.setColumnPin(id, "right");
+  }
+  unpinColumn(id) {
+    this.setColumnPin(id, null);
+  }
+  toggleColumnPin(id) {
+    const current = this.getColumnPin(id);
+    if (current === "left") {
+      this.setColumnPin(id, "right");
+    } else if (current === "right") {
+      this.setColumnPin(id, null);
+    } else {
+      this.setColumnPin(id, "left");
+    }
+  }
+  // ============================================
+  // Listeners
+  // ============================================
+  onChange(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+  notifyListeners() {
+    this.listeners.forEach((listener) => listener());
+  }
+  // ============================================
+  // Serialization (for save/restore)
+  // ============================================
+  getState() {
+    const state = {};
+    this.columnStates.forEach((s, id) => {
+      state[id] = { ...s };
+    });
+    return state;
+  }
+  setState(state) {
+    state && Object.entries(state).forEach(([id, s]) => {
+      if (this.columnStates.has(id)) {
+        this.columnStates.set(id, { ...s });
+      }
+    });
+    this.notifyListeners();
+  }
+};
+
 // src/core/DataGrid.ts
 var DataGrid = class {
   constructor(container, options = {}) {
     this.container = null;
-    this.columns = /* @__PURE__ */ new Map();
-    this.columnOrder = [];
     this.scrollHandler = null;
     this.resizeObserver = null;
     this.isDestroyed = false;
+    // Column resize tracking
+    this.resizeStartX = 0;
     this.container = container;
     this.config = {
       rowHeight: options.rowHeight ?? 48,
@@ -527,6 +708,7 @@ var DataGrid = class {
       sortable: true,
       filterable: this.config.filtering.enabled
     });
+    this.columnManager = new ColumnManager();
     this.setupContainer();
     this.setupScrollHandling();
     this.setupResizeObserver();
@@ -615,6 +797,48 @@ var DataGrid = class {
     this.render();
   }
   // ============================================
+  // Public API - Columns
+  // ============================================
+  setColumns(columns) {
+    this.columnManager = new ColumnManager(columns);
+    this.render();
+  }
+  getColumn(columnId) {
+    return this.columnManager.getColumn(columnId);
+  }
+  updateColumn(columnId, updates) {
+    this.columnManager.updateColumn(columnId, updates);
+    this.render();
+  }
+  setColumnWidth(columnId, width) {
+    this.columnManager.setColumnWidth(columnId, width);
+    this.render();
+  }
+  pinColumnLeft(columnId) {
+    this.columnManager.pinColumnLeft(columnId);
+    this.render();
+  }
+  pinColumnRight(columnId) {
+    this.columnManager.pinColumnRight(columnId);
+    this.render();
+  }
+  unpinColumn(columnId) {
+    this.columnManager.unpinColumn(columnId);
+    this.render();
+  }
+  toggleColumnPin(columnId) {
+    this.columnManager.toggleColumnPin(columnId);
+    this.render();
+  }
+  toggleColumnVisibility(columnId) {
+    this.columnManager.toggleColumnVisibility(columnId);
+    this.render();
+  }
+  moveColumn(fromIndex, toIndex) {
+    this.columnManager.moveColumn(fromIndex, toIndex);
+    this.render();
+  }
+  // ============================================
   // Public API - Scroll
   // ============================================
   refresh() {
@@ -642,15 +866,19 @@ var DataGrid = class {
     this.render();
     this.events.onScroll?.(position);
   }
+  getViewportInfo() {
+    return this.virtualScroll.compute().viewport;
+  }
   // ============================================
   // Public API - Export
   // ============================================
   exportToCSV() {
     const data = this.getData();
-    const headers = this.columnOrder.map((id) => this.columns.get(id)?.header || id);
+    const columns = this.columnManager.getVisibleColumns();
+    const headers = columns.map((c) => c.header);
     const rows = data.map(
-      (row) => this.columnOrder.map((id) => {
-        const value = row[id];
+      (row) => columns.map((col) => {
+        const value = row[col.field];
         const strValue = value === null || value === void 0 ? "" : String(value);
         return strValue.includes(",") ? `"${strValue.replace(/"/g, '""')}"` : strValue;
       }).join(",")
@@ -670,35 +898,6 @@ var DataGrid = class {
       this.resizeObserver = null;
     }
     this.container = null;
-  }
-  // ============================================
-  // Column Management
-  // ============================================
-  setColumns(columns) {
-    this.columns.clear();
-    this.columnOrder = [];
-    for (const col of columns) {
-      this.columns.set(col.id, col);
-      this.columnOrder.push(col.id);
-    }
-    this.render();
-  }
-  getColumn(columnId) {
-    return this.columns.get(columnId);
-  }
-  updateColumn(columnId, updates) {
-    const col = this.columns.get(columnId);
-    if (col) {
-      this.columns.set(columnId, { ...col, ...updates });
-      this.render();
-    }
-  }
-  // ============================================
-  // Viewport Info
-  // ============================================
-  getViewportInfo() {
-    const result = this.virtualScroll.compute();
-    return result.viewport;
   }
   // ============================================
   // Private Methods
@@ -759,14 +958,19 @@ var DataGrid = class {
     const result = this.virtualScroll.compute();
     const data = this.getData();
     const visibleRange = result.visibleItems;
+    const columns = this.columnManager.getColumnsInOrder();
+    void columns;
     let html = "";
     html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex;">`;
-    for (const colId of this.columnOrder) {
-      const col = this.columns.get(colId);
-      if (!col || col.visible === false) continue;
-      html += `<div class="dg-header-cell" style="width: ${col.width || 100}px; min-width: ${col.minWidth || 50}px;">
-        ${col.header}
+    for (const col of columns) {
+      if (!this.columnManager.isColumnVisible(col.id)) continue;
+      const width = this.columnManager.getColumnWidth(col.id);
+      const pinClass = this.columnManager.getColumnPin(col.id) === "left" ? " dg-pin-left" : this.columnManager.getColumnPin(col.id) === "right" ? " dg-pin-right" : "";
+      html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+        <span class="dg-header-text">${col.header}</span>
+        ${col.sortable !== false ? '<span class="dg-sort-icon"></span>' : ""}
       </div>`;
+      html += `<div class="dg-resize-handle" data-resize-column="${col.id}"></div>`;
     }
     html += "</div>";
     const bodyHeight = this.dataManager.getRowCount() * this.config.rowHeight;
@@ -777,65 +981,145 @@ var DataGrid = class {
       const rowId = this.dataManager.getRowId(row);
       const offsetY = i * this.config.rowHeight;
       html += `<div class="dg-row" data-row-id="${rowId}" style="position: absolute; top: ${offsetY}px; height: ${this.config.rowHeight}px; display: flex; width: 100%;">`;
-      for (const colId of this.columnOrder) {
-        const col = this.columns.get(colId);
-        if (!col || col.visible === false) continue;
+      for (const col of columns) {
+        if (!this.columnManager.isColumnVisible(col.id)) continue;
+        const width = this.columnManager.getColumnWidth(col.id);
         const value = row[col.field];
-        html += `<div class="dg-cell" data-column-id="${colId}" style="width: ${col.width || 100}px; min-width: ${col.minWidth || 50}px;">
-          ${col.renderCell ? col.renderCell(value, row, i) : value}
+        const displayValue = value === null || value === void 0 ? "" : String(value);
+        html += `<div class="dg-cell" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+          ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
         </div>`;
       }
       html += "</div>";
     }
     html += "</div>";
     this.injectStyles();
+    this.injectEventHandlers();
     this.container.innerHTML = html;
   }
   injectStyles() {
-    if (document.getElementById("datagrid-styles")) return;
+    if (document.getElementById("datagrid-styles-v3")) return;
     const style = document.createElement("style");
-    style.id = "datagrid-styles";
+    style.id = "datagrid-styles-v3";
     style.textContent = `
       .dg-header {
-        background: #f5f5f5;
-        border-bottom: 1px solid #ddd;
+        background: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
         position: sticky;
         top: 0;
-        z-index: 1;
+        z-index: 2;
+        user-select: none;
       }
       .dg-header-cell {
         padding: 0 12px;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         font-weight: 600;
+        color: #495057;
         font-size: 14px;
-        border-right: 1px solid #eee;
-        user-select: none;
+        border-right: 1px solid #e9ecef;
+        cursor: pointer;
+        position: relative;
+        flex-shrink: 0;
       }
-      .dg-body {
-        overflow: hidden;
+      .dg-header-cell:hover { background: #e9ecef; }
+      .dg-header-cell.dg-pin-left { position: sticky; left: 0; z-index: 3; background: #f8f9fa; }
+      .dg-header-cell.dg-pin-right { position: sticky; right: 0; z-index: 3; background: #f8f9fa; }
+      .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .dg-sort-icon { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #adb5bd; margin-left: 8px; }
+      .dg-resize-handle {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        cursor: col-resize;
+        z-index: 4;
+        background: transparent;
       }
-      .dg-row {
-        border-bottom: 1px solid #eee;
-      }
-      .dg-row:hover {
-        background: #fafafa;
-      }
+      .dg-resize-handle:hover { background: rgba(108, 92, 231, 0.3); }
+      .dg-resize-handle.dg-resizing { background: #6c5ce7; }
+      .dg-body { overflow: hidden; }
+      .dg-row { border-bottom: 1px solid #f1f3f5; }
+      .dg-row:hover { background: #f8f9fa; }
       .dg-cell {
         padding: 0 12px;
         display: flex;
         align-items: center;
         font-size: 14px;
+        color: #212529;
         border-right: 1px solid #f0f0f0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        flex-shrink: 0;
       }
     `;
     document.head.appendChild(style);
   }
+  injectEventHandlers() {
+    if (!this.container) return;
+    const resizeHandles = this.container.querySelectorAll(".dg-resize-handle");
+    resizeHandles.forEach((handle) => {
+      const colId = handle.dataset.resizeColumn;
+      if (!colId) return;
+      let isResizing = false;
+      const onMouseMove = (e) => {
+        if (!isResizing) return;
+        const deltaX = e.clientX - this.resizeStartX;
+        const currentWidth = this.columnManager.getColumnWidth(colId);
+        this.columnManager.setColumnWidth(colId, currentWidth + deltaX);
+        this.resizeStartX = e.clientX;
+        this.render();
+      };
+      const onMouseUp = () => {
+        isResizing = false;
+        handle.classList.remove("dg-resizing");
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+      handle.addEventListener("mousedown", (e) => {
+        isResizing = true;
+        this.resizeStartX = e.clientX;
+        handle.classList.add("dg-resizing");
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+    });
+    const headerCells = this.container.querySelectorAll(".dg-header-cell");
+    headerCells.forEach((cell) => {
+      const colId = cell.dataset.columnId;
+      if (!colId) return;
+      cell.addEventListener("click", () => {
+        const col = this.columnManager.getColumn(colId);
+        if (!col || col.sortable === false) return;
+        const currentSort = this.dataManager.getSortState();
+        const existing = currentSort.find((s) => s.columnId === colId);
+        if (!existing) {
+          this.dataManager.addSortState(colId, "asc");
+        } else if (existing.direction === "asc") {
+          this.dataManager.addSortState(colId, "desc");
+        } else {
+          this.dataManager.clearSortState();
+        }
+        this.events.onSort?.(this.dataManager.getSortState());
+        this.render();
+      });
+    });
+    const rows = this.container.querySelectorAll(".dg-row");
+    rows.forEach((row) => {
+      row.addEventListener("click", () => {
+        const rowId = row.dataset.rowId;
+        if (!rowId) return;
+        const rowData = this.dataManager.getRowById(rowId);
+        if (rowData) this.events.onRowClick?.(rowId, rowData);
+      });
+    });
+  }
 };
 export {
+  ColumnManager,
   DataGrid,
   DataManager,
   VirtualScroll

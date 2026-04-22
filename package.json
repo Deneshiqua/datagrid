@@ -2,11 +2,11 @@
   "name": "@deneshiqua/datagrid",
   "version": "0.1.0",
   "description": "High-performance JavaScript Data Grid Library",
-  "main": "dist/index.js",
+  "main": "dist/datagrid.esm.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
-    "build": "tsc",
+    "build": "tsc && node build.js",
     "dev": "tsc --watch"
   },
   "keywords": [
