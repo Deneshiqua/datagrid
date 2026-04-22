@@ -492,6 +492,7 @@ export class DataGrid {
             handle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[RESIZE] mousedown on column:', colId);
                 isResizing = true;
                 this.resizeStartX = e.clientX;
                 handle.classList.add('dg-resizing');
@@ -508,20 +509,29 @@ export class DataGrid {
             // Sort on click
             cell.addEventListener('click', (e) => {
                 // Don't sort if clicking resize handle
-                if (e.target.classList.contains('dg-resize-handle'))
+                if (e.target.classList.contains('dg-resize-handle')) {
+                    console.log('[SORT] Click was on resize handle, skipping sort');
                     return;
+                }
                 const col = this.columnManager.getColumn(colId);
-                if (!col || col.sortable === false)
+                console.log('[SORT] Clicked column:', colId, 'sortable:', col?.sortable);
+                if (!col || col.sortable === false) {
+                    console.log('[SORT] Column not sortable');
                     return;
+                }
                 const currentSort = this.dataManager.getSortState();
+                console.log('[SORT] Current sort state:', currentSort);
                 const existing = currentSort.find(s => s.columnId === colId);
                 if (!existing) {
+                    console.log('[SORT] No existing sort, setting ASC');
                     this.dataManager.addSortState(colId, 'asc');
                 }
                 else if (existing.direction === 'asc') {
+                    console.log('[SORT] Was ASC, setting DESC');
                     this.dataManager.addSortState(colId, 'desc');
                 }
                 else {
+                    console.log('[SORT] Was DESC, clearing sort');
                     this.dataManager.clearSortState();
                 }
                 this.events.onSort?.(this.dataManager.getSortState());
