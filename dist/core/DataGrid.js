@@ -255,12 +255,17 @@ export class DataGrid {
             const width = this.columnManager.getColumnWidth(col.id);
             const pinPos = this.columnManager.getColumnPin(col.id);
             const pinClass = pinPos === 'left' ? ' dg-pin-left' : pinPos === 'right' ? ' dg-pin-right' : '';
-            // Sort state
-            const sortState = sortStates.find(s => s.columnId === col.id);
+            // Sort state - show arrow for single, number for multi-sort
+            const sortIndex = sortStates.findIndex(s => s.columnId === col.id);
             let sortIcon = '';
-            if (sortState) {
-                const arrow = sortState.direction === 'asc' ? ' ▲' : ' ▼';
-                sortIcon = `<span class="dg-sort-arrow">${arrow}</span>`;
+            if (sortIndex !== -1) {
+                const direction = sortStates[sortIndex].direction;
+                if (sortStates.length > 1) {
+                    sortIcon = `<span class="dg-sort-badge">${sortIndex + 1}${direction === 'asc' ? ' ▲' : ' ▼'}</span>`;
+                }
+                else {
+                    sortIcon = `<span class="dg-sort-arrow">${direction === 'asc' ? '▲' : '▼'}</span>`;
+                }
             }
             html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" data-pinned="${pinPos || ''}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
         <span class="dg-header-text">${col.header}${sortIcon}</span>
@@ -324,7 +329,8 @@ export class DataGrid {
       .dg-header-cell.dg-pin-left { position: sticky; left: 0; z-index: 10; background: #e8f4f8; }
       .dg-header-cell.dg-pin-right { position: sticky; right: 0; z-index: 10; background: #fff9e6; }
       .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
-      .dg-sort-arrow { font-size: 10px; color: #6c5ce7; }
+      .dg-sort-arrow { font-size: 10px; color: #6c5ce7; margin-left: 4px; }
+      .dg-sort-badge { font-size: 10px; background: #6c5ce7; color: white; padding: 1px 5px; border-radius: 8px; margin-left: 4px; min-width: 18px; text-align: center; }
       .dg-resize-handle {
         position: absolute;
         right: -3px;
@@ -514,30 +520,41 @@ export class DataGrid {
             // Sort on click
             cell.addEventListener('click', (e) => {
                 // Don't sort if clicking resize handle
-                if (e.target.classList.contains('dg-resize-handle')) {
-                    console.log('[SORT] Click was on resize handle, skipping sort');
+                if (e.target.classList.contains('dg-resize-handle'))
                     return;
-                }
                 const col = this.columnManager.getColumn(colId);
-                console.log('[SORT] Clicked column:', colId, 'sortable:', col?.sortable);
-                if (!col || col.sortable === false) {
-                    console.log('[SORT] Column not sortable');
+                if (!col || col.sortable === false)
                     return;
-                }
+                const isMultiSort = e.shiftKey && this.config.sorting.multiSort;
                 const currentSort = this.dataManager.getSortState();
-                console.log('[SORT] Current sort state:', currentSort);
                 const existing = currentSort.find(s => s.columnId === colId);
-                if (!existing) {
-                    console.log('[SORT] No existing sort, setting ASC');
-                    this.dataManager.addSortState(colId, 'asc');
-                }
-                else if (existing.direction === 'asc') {
-                    console.log('[SORT] Was ASC, setting DESC');
-                    this.dataManager.addSortState(colId, 'desc');
+                if (isMultiSort) {
+                    // Multi-sort: toggle this column's direction, keep others
+                    if (existing) {
+                        if (existing.direction === 'asc') {
+                            this.dataManager.addSortState(colId, 'desc');
+                        }
+                        else {
+                            // Remove this column from sort
+                            this.dataManager.setSortState(currentSort.filter(s => s.columnId !== colId));
+                        }
+                    }
+                    else {
+                        this.dataManager.addSortState(colId, 'asc');
+                    }
                 }
                 else {
-                    console.log('[SORT] Was DESC, clearing sort');
-                    this.dataManager.clearSortState();
+                    // Single sort: clear others first
+                    if (!existing) {
+                        this.dataManager.clearSortState();
+                        this.dataManager.addSortState(colId, 'asc');
+                    }
+                    else if (existing.direction === 'asc') {
+                        this.dataManager.addSortState(colId, 'desc');
+                    }
+                    else {
+                        this.dataManager.clearSortState();
+                    }
                 }
                 this.events.onSort?.(this.dataManager.getSortState());
                 this.render();
