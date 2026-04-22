@@ -958,8 +958,10 @@ var DataGrid = class {
           sortIcon = `<span class="dg-sort-arrow">${direction === "asc" ? "\u25B2" : "\u25BC"}</span>`;
         }
       }
+      const hasFilter = this.config.filtering.enabled;
       html += `<div class="dg-header-cell${pinClass}" data-column-id="${col.id}" data-pinned="${pinPos || ""}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
         <span class="dg-header-text">${col.header}${sortIcon}</span>
+        ${hasFilter ? `<input type="text" class="dg-filter-input" data-filter-column="${col.id}" placeholder="\u{1F50D}" />` : ""}
         <div class="dg-resize-handle" data-resize-column="${col.id}"></div>
       </div>`;
     }
@@ -1018,6 +1020,9 @@ var DataGrid = class {
       .dg-header-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
       .dg-sort-arrow { font-size: 10px; color: #6c5ce7; margin-left: 4px; }
       .dg-sort-badge { font-size: 10px; background: #6c5ce7; color: white; padding: 1px 5px; border-radius: 8px; margin-left: 4px; min-width: 18px; text-align: center; }
+      .dg-filter-input { width: 30px; border: none; background: transparent; font-size: 12px; padding: 2px; margin-left: 4px; }
+      .dg-filter-input:focus { width: 80px; background: white; border: 1px solid #6c5ce7; border-radius: 4px; outline: none; }
+      .dg-filter-input.has-value { color: #6c5ce7; font-weight: bold; }
       .dg-resize-handle {
         position: absolute;
         right: -3px;
@@ -1229,6 +1234,27 @@ var DataGrid = class {
         e.preventDefault();
         const mouseEvent = e;
         this.showContextMenu(mouseEvent.clientX, mouseEvent.clientY, colId);
+      });
+    });
+    const filterInputs = this.container.querySelectorAll(".dg-filter-input");
+    filterInputs.forEach((input) => {
+      const colId = input.dataset.filterColumn;
+      if (!colId) return;
+      input.addEventListener("input", (e) => {
+        const value = e.target.value;
+        if (value.trim()) {
+          this.dataManager.setFilterState([{ columnId: colId, type: "text", operator: "contains", value }]);
+          input.classList.add("has-value");
+        } else {
+          this.dataManager.setFilterState([]);
+          input.classList.remove("has-value");
+        }
+        this.events.onFilter?.(this.dataManager.getFilterState());
+        this.updateVirtualScroll();
+        this.render();
+      });
+      input.addEventListener("click", (e) => {
+        e.stopPropagation();
       });
     });
     const rows = this.container.querySelectorAll(".dg-row");

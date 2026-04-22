@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataGrid v0.5 - Filtering System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #eee;
+    }
+    
+    h1 { text-align: center; margin-bottom: 5px; color: #fff; }
+    .version { text-align: center; color: #6c5ce7; font-weight: bold; margin-bottom: 15px; }
+    
+    .feature-badge {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .feature-badge span {
+      background: rgba(108, 92, 231, 0.2);
+      color: #a29bfe;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin: 0 4px;
+      display: inline-block;
+    }
+    
+    .feature-badge span.completed {
+      background: rgba(0, 206, 201, 0.2);
+      color: #00cec9;
+    }
+    
+    .controls {
+      max-width: 1400px;
+      margin: 0 auto 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .controls button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .controls button:hover { transform: translateY(-2px); }
+    .btn-primary { background: #6c5ce7; color: white; }
+    .btn-secondary { background: #2d3436; color: white; }
+    .btn-danger { background: #d63031; color: white; }
+    
+    .grid-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      height: 500px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    
+    #my-grid { height: 100%; }
+    
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .info span { color: #6c5ce7; font-weight: bold; }
+    
+    .instructions {
+      max-width: 1400px;
+      margin: 20px auto;
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .instructions h3 { color: #fff; margin-bottom: 10px; }
+    .instructions ul { margin-left: 20px; }
+    .instructions li { margin: 5px 0; }
+    .instructions code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #00cec9; }
+  </style>
+</head>
+<body>
+  <h1>🚀 DataGrid</h1>
+  <p class="version">v0.5.0 - Epic 5: Filtering System</p>
+  
+  <div class="feature-badge">
+    <span class="completed">✅ Virtual Scrolling</span>
+    <span class="completed">✅ Undo/Redo</span>
+    <span class="completed">✅ Column System</span>
+    <span class="completed">✅ Multi-Column Sort</span>
+    <span class="completed">✅ Filtering</span>
+    <span>⏳ Selection</span>
+  </div>
+  
+  <div class="controls">
+    <button class="btn-danger" id="btn-clear-filters">✕ Clear All Filters</button>
+    <button class="btn-secondary" id="btn-log-filters">📋 Log Filter State</button>
+  </div>
+  
+  <div class="instructions">
+    <h3>🎮 Filtering Test:</h3>
+    <ul>
+      <li><strong>Column Filter:</strong> Header'daki 🔍 ikonuna tıkla veya input'a yazmaya başla</li>
+      <li><strong>Text Match:</strong> Yazdığın text kolonlarda aranır (contains)</li>
+      <li><strong>Clear:</strong> Input'u temizle veya butona tıkla</li>
+    </ul>
+  </div>
+  
+  <div class="grid-container">
+    <div id="my-grid"></div>
+  </div>
+  
+  <p class="info">🎯 <span id="row-count">0</span> rows | Type in filter inputs to search</p>
+
+  <script type="module">
+    import { DataGrid } from './dist/datagrid.esm.js';
+
+    let grid;
+
+    const columns = [
+      { id: 'id', field: 'id', header: 'ID', width: 70, sortable: true },
+      { id: 'name', field: 'name', header: 'Full Name', width: 180, sortable: true },
+      { id: 'email', field: 'email', header: 'Email', width: 220, sortable: true },
+      { id: 'age', field: 'age', header: 'Age', width: 80, sortable: true },
+      { id: 'city', field: 'city', header: 'City', width: 130, sortable: true },
+      { id: 'department', field: 'department', header: 'Department', width: 130, sortable: true },
+      { id: 'salary', field: 'salary', header: 'Salary ($)', width: 120, sortable: true },
+      { id: 'active', field: 'active', header: 'Active', width: 80, sortable: true },
+    ];
+
+    const generateData = (count) => {
+      const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+      const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Diego'];
+      const data = [];
+      for (let i = 1; i <= count; i++) {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        data.push({
+          id: i,
+          name: `${firstName} ${lastName}`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+          age: Math.floor(Math.random() * 40) + 20,
+          city: cities[Math.floor(Math.random() * cities.length)],
+          department: ['Engineering', 'Sales', 'Marketing', 'HR'][Math.floor(Math.random() * 4)],
+          salary: Math.floor(Math.random() * 60000) + 40000,
+          active: Math.random() > 0.2,
+        });
+      }
+      return data;
+    };
+
+    function initGrid() {
+      const container = document.getElementById('my-grid');
+      grid = new DataGrid(container, {
+        rowHeight: 48,
+        headerHeight: 56,
+        bufferSize: 10,
+        sorting: { multiSort: true },
+        filtering: { enabled: true, quickFilter: false },
+        onSort: (states) => console.log('Sort changed:', states),
+        onFilter: (states) => console.log('Filter changed:', states),
+        onRowClick: (rowId, rowData) => console.log('Row clicked:', rowId),
+      });
+
+      grid.setColumns(columns);
+      grid.setData(generateData(1000));
+      
+      document.getElementById('row-count').textContent = '1,000';
+      console.log('✅ DataGrid v0.5 initialized with filtering');
+    }
+
+    // Button handlers
+    document.getElementById('btn-clear-filters').addEventListener('click', () => {
+      grid.setFilterState([]);
+      document.querySelectorAll('.dg-filter-input').forEach(input => {
+        input.value = '';
+        input.classList.remove('has-value');
+      });
+      console.log('🔄 Cleared all filters');
+    });
+
+    document.getElementById('btn-log-filters').addEventListener('click', () => {
+      const state = grid.getFilterState();
+      console.log('📋 Current filter state:', JSON.stringify(state, null, 2));
+    });
+
+    initGrid();
+  </script>
+</body>
+</html>
