@@ -2,7 +2,6 @@
   "version": 2,
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/dist/(.*)", "destination": "/dist/$1" },
     { "source": "/(.*)", "destination": "/demo/$1" }
   ]
 }
