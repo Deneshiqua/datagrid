@@ -32,6 +32,7 @@ export class DataGrid implements DataGridInstance {
   private resizeStartX: number = 0;
 
   constructor(container: HTMLElement, options: DataGridOptions = {}) {
+    console.log('[DATAGRID] Constructor called, container:', container.tagName, container.id);
     this.container = container;
     
     this.config = {
@@ -284,6 +285,7 @@ export class DataGrid implements DataGridInstance {
 
   private render(): void {
     if (!this.container || this.isDestroyed) return;
+    console.log('[RENDER] Called, container exists:', !!this.container);
 
     const result = this.virtualScroll.compute();
     const data = this.getData();
@@ -529,9 +531,12 @@ export class DataGrid implements DataGridInstance {
 
   private injectEventHandlers(): void {
     if (!this.container) return;
+    console.log('[INJECT] Container children:', this.container.children.length);
+    console.log('[INJECT] Looking for resize handles...');
 
     // Resize handles
     const resizeHandles = this.container.querySelectorAll('.dg-resize-handle');
+    console.log('[INJECT] Found resize handles:', resizeHandles.length);
     resizeHandles.forEach(handle => {
       const colId = (handle as HTMLElement).dataset.resizeColumn;
       if (!colId) return;

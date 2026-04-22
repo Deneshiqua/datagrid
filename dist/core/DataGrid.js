@@ -13,6 +13,7 @@ export class DataGrid {
         this.isDestroyed = false;
         this.resizeStartX = 0;
         this.contextMenu = null;
+        console.log('[DATAGRID] Constructor called, container:', container.tagName, container.id);
         this.container = container;
         this.config = {
             rowHeight: options.rowHeight ?? 48,
@@ -239,6 +240,7 @@ export class DataGrid {
     render() {
         if (!this.container || this.isDestroyed)
             return;
+        console.log('[RENDER] Called, container exists:', !!this.container);
         const result = this.virtualScroll.compute();
         const data = this.getData();
         const visibleRange = result.visibleItems;
@@ -466,8 +468,11 @@ export class DataGrid {
     injectEventHandlers() {
         if (!this.container)
             return;
+        console.log('[INJECT] Container children:', this.container.children.length);
+        console.log('[INJECT] Looking for resize handles...');
         // Resize handles
         const resizeHandles = this.container.querySelectorAll('.dg-resize-handle');
+        console.log('[INJECT] Found resize handles:', resizeHandles.length);
         resizeHandles.forEach(handle => {
             const colId = handle.dataset.resizeColumn;
             if (!colId)
