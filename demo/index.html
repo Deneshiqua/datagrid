@@ -3,135 +3,245 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DataGrid Demo</title>
+  <title>DataGrid - Demo Versions</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1a1a2e;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       min-height: 100vh;
-      padding: 20px;
+      padding: 40px 20px;
+      color: #eee;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
     }
     
     h1 {
-      color: #eee;
       text-align: center;
-      margin-bottom: 20px;
+      color: #fff;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
     }
     
-    .grid-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      height: 600px;
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-    
-    #my-grid {
-      height: 100%;
-    }
-    
-    .info {
-      color: #aaa;
+    .subtitle {
       text-align: center;
-      margin-top: 20px;
-      font-size: 14px;
-    }
-    
-    .info span {
       color: #6c5ce7;
       font-weight: bold;
+      margin-bottom: 40px;
+    }
+    
+    .description {
+      text-align: center;
+      color: #888;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+    
+    .versions {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .version-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .version-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+      border-color: rgba(108, 92, 231, 0.5);
+    }
+    
+    .version-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .version-number {
+      background: #6c5ce7;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    
+    .version-date {
+      color: #666;
+      font-size: 0.85rem;
+    }
+    
+    .version-title {
+      font-size: 1.3rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    
+    .version-desc {
+      color: #aaa;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .feature {
+      background: rgba(0, 206, 201, 0.15);
+      color: #00cec9;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+    
+    .feature.pending {
+      background: rgba(255, 200, 0, 0.15);
+      color: #ffc800;
+    }
+    
+    .demo-link {
+      display: inline-block;
+      background: #6c5ce7;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    
+    .demo-link:hover {
+      background: #5b4cdb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    
+    .status.done {
+      background: rgba(0, 206, 201, 0.2);
+      color: #00cec9;
+    }
+    
+    .status.in-progress {
+      background: rgba(255, 200, 0, 0.2);
+      color: #ffc800;
+    }
+    
+    .status.todo {
+      background: rgba(255, 255, 255, 0.1);
+      color: #888;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    footer a {
+      color: #6c5ce7;
+      text-decoration: none;
+    }
+    
+    footer a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <h1>🚀 DataGrid - Virtual Scrolling Demo</h1>
-  
-  <div class="grid-container">
-    <div id="my-grid"></div>
-  </div>
-  
-  <p class="info">
-    Rendering <span id="row-count">0</span> rows with virtual scrolling
-  </p>
-
-  <script type="module">
-    import { DataGrid, ColumnDefinition } from './dist/index.js';
-
-    // Generate 100,000 test rows
-    const generateData = (count) => {
-      const data = [];
-      const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
-      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
-      const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'];
+  <div class="container">
+    <h1>🚀 DataGrid</h1>
+    <p class="subtitle">High-Performance JavaScript Data Grid Library</p>
+    
+    <p class="description">
+      AG Grid'e alternatif, açık kaynaklı, yüksek performanslı bir data grid kütüphanesi.<br>
+      Vanilla JavaScript ile yazılmış, React/Vue/Angular wrapper'ları ile tüm framework'lerde çalışır.
+    </p>
+    
+    <div class="versions">
       
-      for (let i = 1; i <= count; i++) {
-        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-        data.push({
-          id: `row-${i}`,
-          rowNumber: i,
-          firstName,
-          lastName,
-          fullName: `${firstName} ${lastName}`,
-          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-          age: Math.floor(Math.random() * 60) + 18,
-          city: cities[Math.floor(Math.random() * cities.length)],
-          salary: Math.floor(Math.random() * 100000) + 30000,
-          active: Math.random() > 0.3,
-        });
-      }
-      return data;
-    };
-
-    // Define columns
-    const columns = [
-      { id: 'rowNumber', field: 'rowNumber', header: '#', width: 70 },
-      { id: 'fullName', field: 'fullName', header: 'Full Name', width: 180 },
-      { id: 'email', field: 'email', header: 'Email', width: 250 },
-      { id: 'age', field: 'age', header: 'Age', width: 80, sortable: true },
-      { id: 'city', field: 'city', header: 'City', width: 130 },
-      { id: 'salary', field: 'salary', header: 'Salary', width: 120, sortable: true },
-      { id: 'active', field: 'active', header: 'Active', width: 80 },
-    ];
-
-    // Initialize grid
-    const container = document.getElementById('my-grid');
-    const grid = new DataGrid(container, {
-      rowHeight: 48,
-      headerHeight: 56,
-      bufferSize: 10,
-      sorting: { multiSort: true },
-      filtering: { enabled: true, quickFilter: true },
-      selection: { mode: 'multiple', checkboxes: true },
-      onScroll: (pos) => {
-        // console.log('Scroll:', pos);
-      },
-      onSort: (states) => {
-        console.log('Sort changed:', states);
-      },
-      onRowClick: (rowId, rowData) => {
-        console.log('Row clicked:', rowId, rowData);
-      },
-    });
-
-    grid.setColumns(columns);
-
-    // Generate and set data
-    const rowCount = 100000;
-    const data = generateData(rowCount);
-    document.getElementById('row-count').textContent = rowCount.toLocaleString();
-    grid.setData(data);
-
-    console.log('✅ DataGrid initialized with', rowCount, 'rows');
-    console.log('📊 Try scrolling, sorting (click headers), and using the quick filter!');
-  </script>
+      <!-- v0.2 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.2.0</span>
+          <span class="version-date">2026-04-22</span>
+        </div>
+        <h2 class="version-title">
+          Undo/Redo & Batch Operations
+          <span class="status done">✅ Epic 1+2 Done</span>
+        </h2>
+        <p class="version-desc">
+          Virtual scrolling, Undo/Redo sistemi ve Batch operasyonları eklendi. 
+          Birden fazla satır ekleme, silme, güncelleme işlemleri tek seferde yapılabilir.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Batch Operations</span>
+          <span class="feature pending">⏳ Sorting</span>
+          <span class="feature pending">⏳ Filtering</span>
+          <span class="feature pending">⏳ Selection</span>
+        </div>
+        <a href="/v0.2-undo-redo.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.1 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.1.0</span>
+          <span class="version-date">2026-04-22</span>
+        </div>
+        <h2 class="version-title">
+          Virtual Scrolling Engine
+          <span class="status done">✅ Epic 1 Done</span>
+        </h2>
+        <p class="version-desc">
+          100,000+ satır performans testi. O(1) complexity ile sadece görünür satırlar render ediliyor.
+          FPS counter ile scroll performansı takip edilebilir.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ 100k Row Test</span>
+          <span class="feature">✅ FPS Counter</span>
+          <span class="feature pending">⏳ Sorting</span>
+          <span class="feature pending">⏳ Filtering</span>
+        </div>
+        <a href="/v0.1-virtual-scroll.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+    </div>
+    
+    <footer>
+      <p>
+        <a href="https://github.com/Deneshiqua/datagrid" target="_blank">📦 GitHub</a> | 
+        <a href="https://github.com/users/Deneshiqua/projects/1" target="_blank">📋 Roadmap</a>
+      </p>
+      <p style="margin-top: 8px;">Built with ❤️ by OpenClaw Agent</p>
+    </footer>
+  </div>
 </body>
 </html>
