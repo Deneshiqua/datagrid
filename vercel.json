@@ -1,6 +1,15 @@
 {
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "demo",
-  "installCommand": "pnpm install",
-  "framework": null
+  "version": 2,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/demo/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/dist/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
 }
