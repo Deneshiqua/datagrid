@@ -981,8 +981,8 @@ var DataGrid = class {
     }
     html += "</div>";
     this.injectStyles();
-    this.injectEventHandlers();
     this.container.innerHTML = html;
+    this.injectEventHandlers();
   }
   injectStyles() {
     if (document.getElementById("datagrid-styles-v4")) return;

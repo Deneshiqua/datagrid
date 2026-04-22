@@ -344,8 +344,8 @@ export class DataGrid implements DataGridInstance {
     html += '</div>';
 
     this.injectStyles();
-    this.injectEventHandlers();
     this.container.innerHTML = html;
+    this.injectEventHandlers();
   }
 
   private injectStyles(): void {
