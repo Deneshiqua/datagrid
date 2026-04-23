@@ -19,6 +19,7 @@ export class DataGrid {
         // Editing state
         this.editingCell = null;
         this.editValue = '';
+        this.ignoreNextBlur = false;
         this.contextMenu = null;
         this.container = container;
         this.config = {
@@ -907,6 +908,7 @@ export class DataGrid {
                     }
                     else if (e.key === 'Tab') {
                         e.preventDefault();
+                        this.ignoreNextBlur = true;
                         this.editValue = input.value;
                         this.stopEdit(false);
                         // Move to next/prev cell
@@ -930,7 +932,10 @@ export class DataGrid {
                     }
                 });
                 input.addEventListener('blur', () => {
-                    // Small delay to allow click events to fire first
+                    if (this.ignoreNextBlur) {
+                        this.ignoreNextBlur = false;
+                        return;
+                    }
                     setTimeout(() => {
                         if (this.editingCell) {
                             this.editValue = input.value;

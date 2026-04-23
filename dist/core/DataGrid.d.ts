@@ -15,6 +15,7 @@ export declare class DataGrid implements DataGridInstance {
     private lastSelectedIndex;
     private editingCell;
     private editValue;
+    private ignoreNextBlur;
     constructor(container: HTMLElement, options?: DataGridOptions);
     getData(): RowData[];
     setData(data: RowData[]): void;

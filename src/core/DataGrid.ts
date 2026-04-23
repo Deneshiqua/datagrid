@@ -40,6 +40,7 @@ export class DataGrid implements DataGridInstance {
   // Editing state
   private editingCell: { rowId: string; columnId: string } | null = null;
   private editValue: string = '';
+  private ignoreNextBlur: boolean = false;
 
   constructor(container: HTMLElement, options: DataGridOptions = {}) {
     this.container = container;
@@ -995,6 +996,7 @@ export class DataGrid implements DataGridInstance {
             this.stopEdit(true);
           } else if (e.key === 'Tab') {
             e.preventDefault();
+            this.ignoreNextBlur = true;
             this.editValue = input.value;
             this.stopEdit(false);
             // Move to next/prev cell
@@ -1019,7 +1021,10 @@ export class DataGrid implements DataGridInstance {
         });
         
         input.addEventListener('blur', () => {
-          // Small delay to allow click events to fire first
+          if (this.ignoreNextBlur) {
+            this.ignoreNextBlur = false;
+            return;
+          }
           setTimeout(() => {
             if (this.editingCell) {
               this.editValue = input.value;

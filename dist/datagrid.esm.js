@@ -699,6 +699,7 @@ var DataGrid = class {
     // Editing state
     this.editingCell = null;
     this.editValue = "";
+    this.ignoreNextBlur = false;
     this.contextMenu = null;
     this.container = container;
     this.config = {
@@ -1564,6 +1565,7 @@ var DataGrid = class {
             this.stopEdit(true);
           } else if (e.key === "Tab") {
             e.preventDefault();
+            this.ignoreNextBlur = true;
             this.editValue = input.value;
             this.stopEdit(false);
             const rowId = input.dataset.rowId;
@@ -1584,6 +1586,10 @@ var DataGrid = class {
           }
         });
         input.addEventListener("blur", () => {
+          if (this.ignoreNextBlur) {
+            this.ignoreNextBlur = false;
+            return;
+          }
           setTimeout(() => {
             if (this.editingCell) {
               this.editValue = input.value;
