@@ -699,7 +699,7 @@ var DataGrid = class {
     // Editing state
     this.editingCell = null;
     this.editValue = "";
-    this.ignoreNextBlur = false;
+    this.currentEditor = null;
     this.contextMenu = null;
     this.container = container;
     this.config = {
@@ -857,6 +857,10 @@ var DataGrid = class {
     this.editingCell = { rowId, columnId };
     this.editValue = String(row[col.field] ?? "");
     this.events.onCellEditStart?.(rowId, columnId);
+    setTimeout(() => {
+      const editor = this.container?.querySelector(".dg-cell-editor");
+      if (editor) this.currentEditor = editor;
+    }, 0);
     this.render();
   }
   stopEdit(cancelled = false) {
@@ -875,6 +879,7 @@ var DataGrid = class {
     }
     this.editingCell = null;
     this.editValue = "";
+    this.currentEditor = null;
     this.render();
   }
   parseValue(value, type) {
@@ -1546,7 +1551,7 @@ var DataGrid = class {
           const columnId = cell.dataset.columnId;
           if (rowId && columnId) {
             if (this.editingCell && (this.editingCell.rowId !== rowId || this.editingCell.columnId !== columnId)) {
-              this.ignoreNextBlur = true;
+              this.editValue = this.currentEditor?.value || "";
               this.stopEdit(false);
             }
             this.startEdit(rowId, columnId);
@@ -1558,6 +1563,7 @@ var DataGrid = class {
         const input = editor;
         input.focus();
         input.select();
+        this.currentEditor = input;
         input.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
             this.editValue = input.value;
@@ -1566,7 +1572,6 @@ var DataGrid = class {
             this.stopEdit(true);
           } else if (e.key === "Tab") {
             e.preventDefault();
-            this.ignoreNextBlur = true;
             this.editValue = input.value;
             this.stopEdit(false);
             const rowId = input.dataset.rowId;
@@ -1587,16 +1592,10 @@ var DataGrid = class {
           }
         });
         input.addEventListener("blur", () => {
-          if (this.ignoreNextBlur) {
-            this.ignoreNextBlur = false;
-            return;
+          if (this.currentEditor === input) {
+            this.editValue = input.value;
+            this.stopEdit(false);
           }
-          setTimeout(() => {
-            if (this.editingCell) {
-              this.editValue = input.value;
-              this.stopEdit(false);
-            }
-          }, 100);
         });
       });
     }

@@ -40,7 +40,7 @@ export class DataGrid implements DataGridInstance {
   // Editing state
   private editingCell: { rowId: string; columnId: string } | null = null;
   private editValue: string = '';
-  private ignoreNextBlur: boolean = false;
+  private currentEditor: HTMLInputElement | null = null;
 
   constructor(container: HTMLElement, options: DataGridOptions = {}) {
     this.container = container;
@@ -209,6 +209,11 @@ export class DataGrid implements DataGridInstance {
     this.editingCell = { rowId, columnId };
     this.editValue = String(row[col.field] ?? '');
     this.events.onCellEditStart?.(rowId, columnId);
+    // Store reference to the editor that will be created in render()
+    setTimeout(() => {
+      const editor = this.container?.querySelector('.dg-cell-editor') as HTMLInputElement;
+      if (editor) this.currentEditor = editor;
+    }, 0);
     this.render();
   }
   
@@ -230,6 +235,7 @@ export class DataGrid implements DataGridInstance {
     
     this.editingCell = null;
     this.editValue = '';
+    this.currentEditor = null;
     this.render();
   }
   
@@ -972,9 +978,9 @@ export class DataGrid implements DataGridInstance {
           const rowId = (cell as HTMLElement).dataset.rowId;
           const columnId = (cell as HTMLElement).dataset.columnId;
           if (rowId && columnId) {
-            // If already editing a different cell, stop that edit first
+            // If already editing a different cell, save and move
             if (this.editingCell && (this.editingCell.rowId !== rowId || this.editingCell.columnId !== columnId)) {
-              this.ignoreNextBlur = true;
+              this.editValue = (this.currentEditor?.value) || '';
               this.stopEdit(false);
             }
             this.startEdit(rowId, columnId);
@@ -988,6 +994,7 @@ export class DataGrid implements DataGridInstance {
         const input = editor as HTMLInputElement;
         input.focus();
         input.select();
+        this.currentEditor = input;
         
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
@@ -997,7 +1004,6 @@ export class DataGrid implements DataGridInstance {
             this.stopEdit(true);
           } else if (e.key === 'Tab') {
             e.preventDefault();
-            this.ignoreNextBlur = true;
             this.editValue = input.value;
             this.stopEdit(false);
             // Move to next/prev cell
@@ -1022,16 +1028,11 @@ export class DataGrid implements DataGridInstance {
         });
         
         input.addEventListener('blur', () => {
-          if (this.ignoreNextBlur) {
-            this.ignoreNextBlur = false;
-            return;
+          // Only stop edit if this is still the current editor
+          if (this.currentEditor === input) {
+            this.editValue = input.value;
+            this.stopEdit(false);
           }
-          setTimeout(() => {
-            if (this.editingCell) {
-              this.editValue = input.value;
-              this.stopEdit(false);
-            }
-          }, 100);
         });
       });
     }
