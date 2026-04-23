@@ -20,6 +20,8 @@ export class DataGrid {
         this.editingCell = null;
         this.editValue = '';
         this.currentEditor = null;
+        // Expanded groups state
+        this.expandedGroups = new Set();
         this.contextMenu = null;
         this.container = container;
         this.config = {
@@ -212,6 +214,53 @@ export class DataGrid {
     }
     isEditing(rowId, columnId) {
         return this.editingCell?.rowId === rowId && this.editingCell?.columnId === columnId;
+    }
+    // ============================================
+    // Grouping API
+    // ============================================
+    setGroupBy(columnId) {
+        this.dataManager.setGroupBy(columnId);
+        this.expandedGroups.clear();
+        this.updateVirtualScroll();
+        this.render();
+    }
+    clearGroup() {
+        this.dataManager.clearGroup();
+        this.expandedGroups.clear();
+        this.updateVirtualScroll();
+        this.render();
+    }
+    getGroupState() {
+        return this.dataManager.getGroupState();
+    }
+    toggleGroup(groupKey) {
+        this.dataManager.toggleGroup(groupKey);
+        this.expandedGroups = this.dataManager.getExpandedGroups();
+        this.updateVirtualScroll();
+        this.render();
+    }
+    expandAllGroups() {
+        const data = this.getData();
+        data.forEach(row => {
+            if (row['_isGroupHeader']) {
+                this.dataManager.expandGroup(row['_groupKey']);
+            }
+        });
+        this.expandedGroups = this.dataManager.getExpandedGroups();
+        this.updateVirtualScroll();
+        this.render();
+    }
+    collapseAllGroups() {
+        this.expandedGroups.clear();
+        // Reset all groups in data manager
+        const data = this.getData();
+        data.forEach(row => {
+            if (row['_isGroupHeader']) {
+                this.dataManager.collapseGroup(row['_groupKey']);
+            }
+        });
+        this.updateVirtualScroll();
+        this.render();
     }
     autoSizeColumn(columnId) {
         const col = this.columnManager.getColumn(columnId);
@@ -466,10 +515,24 @@ export class DataGrid {
             const rowId = this.dataManager.getRowId(row);
             const offsetY = i * this.config.rowHeight;
             const isSelected = this.selectedRows.has(rowId);
-            const rowClass = isSelected ? ' dg-row selected' : ' dg-row';
-            html += `<div class="${rowClass}" data-row-id="${rowId}" data-row-index="${i}" style="position: absolute; top: ${offsetY}px; height: ${this.config.rowHeight}px; display: flex; width: 100%;">`;
+            // Check if this is a group header row
+            const isGroupHeader = row['_isGroupHeader'] === true;
+            const groupKey = row['_groupKey'];
+            const isExpanded = this.expandedGroups.has(groupKey);
+            let rowClass = 'dg-row';
+            if (isSelected)
+                rowClass += ' selected';
+            if (isGroupHeader)
+                rowClass += ' dg-group-header';
+            html += `<div class="${rowClass}" data-row-id="${rowId}" data-row-index="${i}" data-group-key="${groupKey || ''}" style="position: absolute; top: ${offsetY}px; height: ${this.config.rowHeight}px; display: flex; width: 100%;">`;
+            // Group expand/collapse toggle
+            if (isGroupHeader) {
+                html += `<div class="dg-cell dg-group-toggle" data-group-key="${groupKey}" style="width: 40px; min-width: 40px; cursor: pointer; font-weight: bold; color: #6c5ce7;">
+          ${isExpanded ? '▼' : '▶'}
+        </div>`;
+            }
             // Checkbox cell
-            if (this.config.selection.mode !== 'none' && this.config.selection.checkboxes) {
+            if (!isGroupHeader && this.config.selection.mode !== 'none' && this.config.selection.checkboxes) {
                 html += `<div class="dg-cell dg-checkbox-cell" style="width: 50px; min-width: 50px;">
           <input type="checkbox" class="dg-row-checkbox" data-row-id="${rowId}" ${isSelected ? 'checked' : ''} />
         </div>`;
@@ -480,18 +543,25 @@ export class DataGrid {
                 const width = this.columnManager.getColumnWidth(col.id);
                 const value = row[col.field];
                 const displayValue = value === null || value === undefined ? '' : String(value);
-                const isEditing = this.isEditing(rowId, col.id);
-                const isEditable = col.editable !== false && this.config.editing.enabled;
-                if (isEditing) {
-                    const inputType = col.type === 'number' ? 'number' : 'text';
-                    html += `<div class="dg-cell dg-cell-editing" data-column-id="${col.id}" data-row-id="${rowId}" style="width: ${width}px; min-width: ${col.minWidth || 50}px; padding: 0;">
-            <input type="${inputType}" class="dg-cell-editor" data-row-id="${rowId}" data-column-id="${col.id}" value="${this.editValue.replace(/"/g, '&quot;')}" style="width: 100%; height: 100%; border: 2px solid #6c5ce7; padding: 0 12px; font-size: 14px; outline: none;" />
+                if (isGroupHeader) {
+                    html += `<div class="dg-cell dg-group-header-cell" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px; font-weight: bold; background: #e8e8e8;">
+            ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
           </div>`;
                 }
                 else {
-                    html += `<div class="dg-cell${isEditable ? ' dg-cell-editable' : ''}" data-column-id="${col.id}" data-row-id="${rowId}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
-            ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
-          </div>`;
+                    const isEditing = this.isEditing(rowId, col.id);
+                    const isEditable = col.editable !== false && this.config.editing.enabled;
+                    if (isEditing) {
+                        const inputType = col.type === 'number' ? 'number' : 'text';
+                        html += `<div class="dg-cell dg-cell-editing" data-column-id="${col.id}" data-row-id="${rowId}" style="width: ${width}px; min-width: ${col.minWidth || 50}px; padding: 0;">
+              <input type="${inputType}" class="dg-cell-editor" data-row-id="${rowId}" data-column-id="${col.id}" value="${this.editValue.replace(/"/g, '&quot;')}" style="width: 100%; height: 100%; border: 2px solid #6c5ce7; padding: 0 12px; font-size: 14px; outline: none;" />
+            </div>`;
+                    }
+                    else {
+                        html += `<div class="dg-cell${isEditable ? ' dg-cell-editable' : ''}" data-column-id="${col.id}" data-row-id="${rowId}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+              ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
+            </div>`;
+                    }
                 }
             }
             html += '</div>';
@@ -555,6 +625,9 @@ export class DataGrid {
       .dg-cell-editable { cursor: pointer; }
       .dg-cell-editable:hover { background: rgba(108, 92, 231, 0.1); }
       .dg-cell-editing { padding: 0; }
+      .dg-group-header { background: #e8e8e8 !important; font-weight: bold; }
+      .dg-group-toggle { text-align: center; user-select: none; }
+      .dg-group-header-cell { background: #e8e8e8 !important; }
       .dg-cell {
         padding: 0 12px;
         display: flex;
@@ -959,6 +1032,17 @@ export class DataGrid {
                 }
             });
         }
+        // Group toggle handlers
+        const groupToggles = this.container.querySelectorAll('.dg-group-toggle');
+        groupToggles.forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const groupKey = toggle.dataset.groupKey;
+                if (groupKey) {
+                    this.toggleGroup(groupKey);
+                }
+            });
+        });
         // Cell click for editing
         if (this.config.editing.enabled) {
             const editableCells = this.container.querySelectorAll('.dg-cell-editable');

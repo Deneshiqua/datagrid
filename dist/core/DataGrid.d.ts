@@ -16,6 +16,7 @@ export declare class DataGrid implements DataGridInstance {
     private editingCell;
     private editValue;
     private currentEditor;
+    private expandedGroups;
     constructor(container: HTMLElement, options?: DataGridOptions);
     getData(): RowData[];
     setData(data: RowData[]): void;
@@ -39,6 +40,15 @@ export declare class DataGrid implements DataGridInstance {
     stopEdit(cancelled?: boolean): void;
     private parseValue;
     isEditing(rowId: string, columnId: string): boolean;
+    setGroupBy(columnId: string): void;
+    clearGroup(): void;
+    getGroupState(): {
+        columnId: string;
+        direction: 'asc' | 'desc';
+    } | null;
+    toggleGroup(groupKey: string): void;
+    expandAllGroups(): void;
+    collapseAllGroups(): void;
     autoSizeColumn(columnId: string): void;
     autoSizeAllColumns(): void;
     stretchColumnsToFill(): void;

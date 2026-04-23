@@ -23,6 +23,8 @@ export declare class DataManager {
     private redoStack;
     private maxHistorySize;
     private listeners;
+    private groupState;
+    private expandedGroups;
     constructor(options?: Partial<DataManagerOptions>);
     setData(data: RowData[]): void;
     getData(): RowData[];
@@ -63,6 +65,18 @@ export declare class DataManager {
     private matchesNumberFilter;
     private applySorting;
     private compareValues;
+    getGroupState(): {
+        columnId: string;
+        direction: 'asc' | 'desc';
+    } | null;
+    setGroupBy(columnId: string): void;
+    clearGroup(): void;
+    toggleGroupDirection(): void;
+    getExpandedGroups(): Set<string>;
+    expandGroup(groupKey: string): void;
+    collapseGroup(groupKey: string): void;
+    toggleGroup(groupKey: string): void;
+    private applyGrouping;
     private buildRowIdMap;
 }
 export default DataManager;

@@ -35,6 +35,10 @@ export class DataManager {
   // Change listeners
   private listeners: Set<() => void> = new Set();
 
+  // Grouping
+  private groupState: { columnId: string; direction: 'asc' | 'desc' } | null = null;
+  private expandedGroups: Set<string> = new Set();
+
   constructor(options: Partial<DataManagerOptions> = {}) {
     this.options = {
       idField: 'id',
@@ -349,6 +353,10 @@ export class DataManager {
     if (this.sortStates.length > 0) {
       result = this.applySorting(result);
     }
+    
+    if (this.groupState) {
+      result = this.applyGrouping(result);
+    }
 
     this.processedData = result;
   }
@@ -431,6 +439,80 @@ export class DataManager {
     if (typeof a === 'number' && typeof b === 'number') return a - b;
     if (typeof a === 'boolean' && typeof b === 'boolean') return a === b ? 0 : a ? -1 : 1;
     return String(a).localeCompare(String(b));
+  }
+  
+  // ============================================
+  // Grouping
+  // ============================================
+  
+  getGroupState(): { columnId: string; direction: 'asc' | 'desc' } | null { return this.groupState; }
+  
+  setGroupBy(columnId: string): void {
+    this.groupState = { columnId, direction: 'asc' };
+    this.expandedGroups.clear();
+    this.processData();
+  }
+  
+  clearGroup(): void {
+    this.groupState = null;
+    this.expandedGroups.clear();
+    this.processData();
+  }
+  
+  toggleGroupDirection(): void {
+    if (!this.groupState) return;
+    this.groupState.direction = this.groupState.direction === 'asc' ? 'desc' : 'asc';
+    this.processData();
+  }
+  
+  getExpandedGroups(): Set<string> { return new Set(this.expandedGroups); }
+  
+  expandGroup(groupKey: string): void { this.expandedGroups.add(groupKey); }
+  
+  collapseGroup(groupKey: string): void { this.expandedGroups.delete(groupKey); }
+  
+  toggleGroup(groupKey: string): void {
+    if (this.expandedGroups.has(groupKey)) {
+      this.expandedGroups.delete(groupKey);
+    } else {
+      this.expandedGroups.add(groupKey);
+    }
+  }
+  
+  private applyGrouping(data: RowData[]): RowData[] {
+    if (!this.groupState) return data;
+    
+    // Group by column
+    const groups = new Map<string, RowData[]>();
+    for (const row of data) {
+      const key = String(row[this.groupState.columnId] ?? '');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(row);
+    }
+    
+    // Sort groups
+    const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+      const cmp = a.localeCompare(b);
+      return this.groupState!.direction === 'asc' ? cmp : -cmp;
+    });
+    
+    // Flatten with group headers
+    const result: RowData[] = [];
+    for (const key of sortedKeys) {
+      const rows = groups.get(key)!;
+      // Add group header row
+      result.push({
+        _isGroupHeader: true,
+        _groupKey: key,
+        _groupRowCount: rows.length,
+        [this.groupState.columnId]: `${key} (${rows.length})`,
+      });
+      // Add child rows if expanded
+      if (this.expandedGroups.has(key) || this.expandedGroups.size === 0) {
+        result.push(...rows);
+      }
+    }
+    return result;
   }
 
   private buildRowIdMap(): void {

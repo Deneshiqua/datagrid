@@ -15,6 +15,9 @@ export class DataManager {
         this.maxHistorySize = 50;
         // Change listeners
         this.listeners = new Set();
+        // Grouping
+        this.groupState = null;
+        this.expandedGroups = new Set();
         this.options = {
             idField: 'id',
             sortable: true,
@@ -281,6 +284,9 @@ export class DataManager {
         if (this.sortStates.length > 0) {
             result = this.applySorting(result);
         }
+        if (this.groupState) {
+            result = this.applyGrouping(result);
+        }
         this.processedData = result;
     }
     applyFilters(data) {
@@ -365,6 +371,71 @@ export class DataManager {
         if (typeof a === 'boolean' && typeof b === 'boolean')
             return a === b ? 0 : a ? -1 : 1;
         return String(a).localeCompare(String(b));
+    }
+    // ============================================
+    // Grouping
+    // ============================================
+    getGroupState() { return this.groupState; }
+    setGroupBy(columnId) {
+        this.groupState = { columnId, direction: 'asc' };
+        this.expandedGroups.clear();
+        this.processData();
+    }
+    clearGroup() {
+        this.groupState = null;
+        this.expandedGroups.clear();
+        this.processData();
+    }
+    toggleGroupDirection() {
+        if (!this.groupState)
+            return;
+        this.groupState.direction = this.groupState.direction === 'asc' ? 'desc' : 'asc';
+        this.processData();
+    }
+    getExpandedGroups() { return new Set(this.expandedGroups); }
+    expandGroup(groupKey) { this.expandedGroups.add(groupKey); }
+    collapseGroup(groupKey) { this.expandedGroups.delete(groupKey); }
+    toggleGroup(groupKey) {
+        if (this.expandedGroups.has(groupKey)) {
+            this.expandedGroups.delete(groupKey);
+        }
+        else {
+            this.expandedGroups.add(groupKey);
+        }
+    }
+    applyGrouping(data) {
+        if (!this.groupState)
+            return data;
+        // Group by column
+        const groups = new Map();
+        for (const row of data) {
+            const key = String(row[this.groupState.columnId] ?? '');
+            if (!groups.has(key))
+                groups.set(key, []);
+            groups.get(key).push(row);
+        }
+        // Sort groups
+        const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+            const cmp = a.localeCompare(b);
+            return this.groupState.direction === 'asc' ? cmp : -cmp;
+        });
+        // Flatten with group headers
+        const result = [];
+        for (const key of sortedKeys) {
+            const rows = groups.get(key);
+            // Add group header row
+            result.push({
+                _isGroupHeader: true,
+                _groupKey: key,
+                _groupRowCount: rows.length,
+                [this.groupState.columnId]: `${key} (${rows.length})`,
+            });
+            // Add child rows if expanded
+            if (this.expandedGroups.has(key) || this.expandedGroups.size === 0) {
+                result.push(...rows);
+            }
+        }
+        return result;
     }
     buildRowIdMap() {
         this.rowIdMap.clear();
