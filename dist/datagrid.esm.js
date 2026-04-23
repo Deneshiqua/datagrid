@@ -1546,6 +1546,7 @@ var DataGrid = class {
           const columnId = cell.dataset.columnId;
           if (rowId && columnId) {
             if (this.editingCell && (this.editingCell.rowId !== rowId || this.editingCell.columnId !== columnId)) {
+              this.ignoreNextBlur = true;
               this.stopEdit(false);
             }
             this.startEdit(rowId, columnId);
