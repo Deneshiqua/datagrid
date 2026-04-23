@@ -11,6 +11,8 @@ export declare class DataGrid implements DataGridInstance {
     private isDestroyed;
     private resizeStartX;
     private filterPopup;
+    private selectedRows;
+    private lastSelectedIndex;
     constructor(container: HTMLElement, options?: DataGridOptions);
     getData(): RowData[];
     setData(data: RowData[]): void;
@@ -24,7 +26,12 @@ export declare class DataGrid implements DataGridInstance {
     undo(): boolean;
     redo(): boolean;
     getSelectedRows(): RowData[];
+    selectRow(rowId: string, addToSelection?: boolean): void;
+    deselectRow(rowId: string): void;
+    selectRange(startIndex: number, endIndex: number): void;
+    selectAll(): void;
     clearSelection(): void;
+    isRowSelected(rowId: string): boolean;
     getSortState(): SortState[];
     setSortState(state: SortState[]): void;
     getFilterState(): FilterState[];

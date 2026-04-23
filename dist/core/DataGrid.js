@@ -13,6 +13,9 @@ export class DataGrid {
         this.isDestroyed = false;
         this.resizeStartX = 0;
         this.filterPopup = null;
+        // Selection state
+        this.selectedRows = new Set();
+        this.lastSelectedIndex = -1;
         this.contextMenu = null;
         this.container = container;
         this.config = {
@@ -101,8 +104,58 @@ export class DataGrid {
         }
         return result;
     }
-    getSelectedRows() { return []; }
-    clearSelection() { }
+    getSelectedRows() {
+        const selected = [];
+        this.selectedRows.forEach(rowId => {
+            const row = this.dataManager.getRowById(rowId);
+            if (row)
+                selected.push(row);
+        });
+        return selected;
+    }
+    selectRow(rowId, addToSelection = false) {
+        if (!addToSelection) {
+            this.selectedRows.clear();
+        }
+        this.selectedRows.add(rowId);
+        const data = this.getData();
+        this.lastSelectedIndex = data.findIndex(row => this.dataManager.getRowId(row) === rowId);
+        this.events.onSelect?.(Array.from(this.selectedRows));
+        this.render();
+    }
+    deselectRow(rowId) {
+        this.selectedRows.delete(rowId);
+        this.events.onSelect?.(Array.from(this.selectedRows));
+        this.render();
+    }
+    selectRange(startIndex, endIndex) {
+        const data = this.getData();
+        const start = Math.min(startIndex, endIndex);
+        const end = Math.max(startIndex, endIndex);
+        for (let i = start; i <= end && i < data.length; i++) {
+            const rowId = this.dataManager.getRowId(data[i]);
+            this.selectedRows.add(rowId);
+        }
+        this.events.onSelect?.(Array.from(this.selectedRows));
+        this.render();
+    }
+    selectAll() {
+        const data = this.getData();
+        data.forEach(row => {
+            this.selectedRows.add(this.dataManager.getRowId(row));
+        });
+        this.events.onSelect?.(Array.from(this.selectedRows));
+        this.render();
+    }
+    clearSelection() {
+        this.selectedRows.clear();
+        this.lastSelectedIndex = -1;
+        this.events.onSelect?.([]);
+        this.render();
+    }
+    isRowSelected(rowId) {
+        return this.selectedRows.has(rowId);
+    }
     getSortState() { return this.dataManager.getSortState(); }
     setSortState(state) {
         this.dataManager.setSortState(state);
@@ -249,6 +302,13 @@ export class DataGrid {
         let html = '';
         // Header
         html += `<div class="dg-header" style="height: ${this.config.headerHeight}px; display: flex; position: relative;">`;
+        // Checkbox column for select all
+        if (this.config.selection.mode !== 'none' && this.config.selection.checkboxes) {
+            const allSelected = data.length > 0 && data.every(row => this.selectedRows.has(this.dataManager.getRowId(row)));
+            html += `<div class="dg-header-cell dg-checkbox-cell" style="width: 50px; min-width: 50px;">
+        <input type="checkbox" class="dg-select-all" ${allSelected ? 'checked' : ''} />
+      </div>`;
+        }
         for (const col of columns) {
             if (!this.columnManager.isColumnVisible(col.id))
                 continue;
@@ -285,7 +345,15 @@ export class DataGrid {
             const row = data[i];
             const rowId = this.dataManager.getRowId(row);
             const offsetY = i * this.config.rowHeight;
-            html += `<div class="dg-row" data-row-id="${rowId}" style="position: absolute; top: ${offsetY}px; height: ${this.config.rowHeight}px; display: flex; width: 100%;">`;
+            const isSelected = this.selectedRows.has(rowId);
+            const rowClass = isSelected ? ' dg-row selected' : ' dg-row';
+            html += `<div class="${rowClass}" data-row-id="${rowId}" data-row-index="${i}" style="position: absolute; top: ${offsetY}px; height: ${this.config.rowHeight}px; display: flex; width: 100%;">`;
+            // Checkbox cell
+            if (this.config.selection.mode !== 'none' && this.config.selection.checkboxes) {
+                html += `<div class="dg-cell dg-checkbox-cell" style="width: 50px; min-width: 50px;">
+          <input type="checkbox" class="dg-row-checkbox" data-row-id="${rowId}" ${isSelected ? 'checked' : ''} />
+        </div>`;
+            }
             for (const col of columns) {
                 if (!this.columnManager.isColumnVisible(col.id))
                     continue;
@@ -352,6 +420,8 @@ export class DataGrid {
       .dg-body { overflow: hidden; }
       .dg-row { border-bottom: 1px solid #f1f3f5; }
       .dg-row:hover { background: #f8f9fa; }
+      .dg-row.selected { background: rgba(108, 92, 231, 0.15) !important; }
+      .dg-row.selected:hover { background: rgba(108, 92, 231, 0.25) !important; }
       .dg-cell {
         padding: 0 12px;
         display: flex;
@@ -683,15 +753,66 @@ export class DataGrid {
         // Row click
         const rows = this.container.querySelectorAll('.dg-row');
         rows.forEach(row => {
-            row.addEventListener('click', () => {
+            row.addEventListener('click', (e) => {
+                if (e.target.classList.contains('dg-row-checkbox'))
+                    return;
                 const rowId = row.dataset.rowId;
+                const rowIndex = parseInt(row.dataset.rowIndex || '-1');
                 if (!rowId)
                     return;
                 const rowData = this.dataManager.getRowById(rowId);
-                if (rowData)
+                if (rowData) {
                     this.events.onRowClick?.(rowId, rowData);
+                }
+                if (this.config.selection.mode === 'none')
+                    return;
+                const isCtrlPressed = e.ctrlKey || e.metaKey;
+                const isShiftPressed = e.shiftKey;
+                if (isShiftPressed && this.lastSelectedIndex >= 0) {
+                    this.selectRange(this.lastSelectedIndex, rowIndex);
+                }
+                else if (isCtrlPressed) {
+                    if (this.selectedRows.has(rowId)) {
+                        this.deselectRow(rowId);
+                    }
+                    else {
+                        this.selectRow(rowId, true);
+                    }
+                }
+                else {
+                    this.selectRow(rowId);
+                }
             });
         });
+        // Checkbox handlers
+        const checkboxes = this.container.querySelectorAll('.dg-row-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const rowId = checkbox.dataset.rowId;
+                if (!rowId)
+                    return;
+                if (this.selectedRows.has(rowId)) {
+                    this.deselectRow(rowId);
+                }
+                else {
+                    this.selectRow(rowId, e.ctrlKey || e.metaKey);
+                }
+            });
+        });
+        // Select all
+        const selectAllCheckbox = this.container.querySelector('.dg-select-all');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (selectAllCheckbox.checked) {
+                    this.selectAll();
+                }
+                else {
+                    this.clearSelection();
+                }
+            });
+        }
     }
 }
 export default DataGrid;
