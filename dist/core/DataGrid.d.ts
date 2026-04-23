@@ -13,6 +13,8 @@ export declare class DataGrid implements DataGridInstance {
     private filterPopup;
     private selectedRows;
     private lastSelectedIndex;
+    private editingCell;
+    private editValue;
     constructor(container: HTMLElement, options?: DataGridOptions);
     getData(): RowData[];
     setData(data: RowData[]): void;
@@ -32,6 +34,10 @@ export declare class DataGrid implements DataGridInstance {
     selectAll(): void;
     clearSelection(): void;
     isRowSelected(rowId: string): boolean;
+    startEdit(rowId: string, columnId: string): void;
+    stopEdit(cancelled?: boolean): void;
+    private parseValue;
+    isEditing(rowId: string, columnId: string): boolean;
     getSortState(): SortState[];
     setSortState(state: SortState[]): void;
     getFilterState(): FilterState[];

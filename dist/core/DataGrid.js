@@ -16,6 +16,9 @@ export class DataGrid {
         // Selection state
         this.selectedRows = new Set();
         this.lastSelectedIndex = -1;
+        // Editing state
+        this.editingCell = null;
+        this.editValue = '';
         this.contextMenu = null;
         this.container = container;
         this.config = {
@@ -155,6 +158,51 @@ export class DataGrid {
     }
     isRowSelected(rowId) {
         return this.selectedRows.has(rowId);
+    }
+    // Editing API
+    startEdit(rowId, columnId) {
+        if (!this.config.editing.enabled)
+            return;
+        const row = this.dataManager.getRowById(rowId);
+        if (!row)
+            return;
+        const col = this.columnManager.getColumn(columnId);
+        if (!col || col.editable === false)
+            return;
+        this.editingCell = { rowId, columnId };
+        this.editValue = String(row[col.field] ?? '');
+        this.events.onCellEditStart?.(rowId, columnId);
+        this.render();
+    }
+    stopEdit(cancelled = false) {
+        if (!this.editingCell)
+            return;
+        const { rowId, columnId } = this.editingCell;
+        const col = this.columnManager.getColumn(columnId);
+        const row = this.dataManager.getRowById(rowId);
+        const originalValue = row ? row[col?.field || columnId] : null;
+        if (!cancelled && col && row) {
+            const newValue = this.parseValue(this.editValue, col.type || 'text');
+            this.dataManager.updateRow(rowId, { [col.field]: newValue });
+            this.events.onEdit?.(rowId, columnId, newValue);
+            this.events.onCellEditEnd?.(rowId, columnId, newValue, false);
+        }
+        else if (cancelled) {
+            this.events.onCellEditEnd?.(rowId, columnId, originalValue, true);
+        }
+        this.editingCell = null;
+        this.editValue = '';
+        this.render();
+    }
+    parseValue(value, type) {
+        if (type === 'number')
+            return parseFloat(value) || 0;
+        if (type === 'boolean')
+            return value.toLowerCase() === 'true';
+        return value;
+    }
+    isEditing(rowId, columnId) {
+        return this.editingCell?.rowId === rowId && this.editingCell?.columnId === columnId;
     }
     getSortState() { return this.dataManager.getSortState(); }
     setSortState(state) {
@@ -360,9 +408,19 @@ export class DataGrid {
                 const width = this.columnManager.getColumnWidth(col.id);
                 const value = row[col.field];
                 const displayValue = value === null || value === undefined ? '' : String(value);
-                html += `<div class="dg-cell" data-column-id="${col.id}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
-          ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
-        </div>`;
+                const isEditing = this.isEditing(rowId, col.id);
+                const isEditable = col.editable !== false && this.config.editing.enabled;
+                if (isEditing) {
+                    const inputType = col.type === 'number' ? 'number' : 'text';
+                    html += `<div class="dg-cell dg-cell-editing" data-column-id="${col.id}" data-row-id="${rowId}" style="width: ${width}px; min-width: ${col.minWidth || 50}px; padding: 0;">
+            <input type="${inputType}" class="dg-cell-editor" data-row-id="${rowId}" data-column-id="${col.id}" value="${this.editValue.replace(/"/g, '&quot;')}" style="width: 100%; height: 100%; border: 2px solid #6c5ce7; padding: 0 12px; font-size: 14px; outline: none;" />
+          </div>`;
+                }
+                else {
+                    html += `<div class="dg-cell${isEditable ? ' dg-cell-editable' : ''}" data-column-id="${col.id}" data-row-id="${rowId}" style="width: ${width}px; min-width: ${col.minWidth || 50}px;">
+            ${col.renderCell ? col.renderCell(value, row, i) : displayValue}
+          </div>`;
+                }
             }
             html += '</div>';
         }
@@ -422,6 +480,9 @@ export class DataGrid {
       .dg-row:hover { background: #f8f9fa; }
       .dg-row.selected { background: rgba(108, 92, 231, 0.15) !important; }
       .dg-row.selected:hover { background: rgba(108, 92, 231, 0.25) !important; }
+      .dg-cell-editable { cursor: pointer; }
+      .dg-cell-editable:hover { background: rgba(108, 92, 231, 0.1); }
+      .dg-cell-editing { padding: 0; }
       .dg-cell {
         padding: 0 12px;
         display: flex;
@@ -811,6 +872,68 @@ export class DataGrid {
                 else {
                     this.clearSelection();
                 }
+            });
+        }
+        // Cell click for editing
+        if (this.config.editing.enabled) {
+            const editableCells = this.container.querySelectorAll('.dg-cell-editable');
+            editableCells.forEach(cell => {
+                cell.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const rowId = cell.dataset.rowId;
+                    const columnId = cell.dataset.columnId;
+                    if (rowId && columnId) {
+                        this.startEdit(rowId, columnId);
+                    }
+                });
+            });
+            // Cell editor handlers
+            const editors = this.container.querySelectorAll('.dg-cell-editor');
+            editors.forEach(editor => {
+                const input = editor;
+                input.focus();
+                input.select();
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        this.editValue = input.value;
+                        this.stopEdit(false);
+                    }
+                    else if (e.key === 'Escape') {
+                        this.stopEdit(true);
+                    }
+                    else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        this.editValue = input.value;
+                        this.stopEdit(false);
+                        // Move to next/prev cell
+                        const rowId = input.dataset.rowId;
+                        const columnId = input.dataset.columnId;
+                        if (rowId && columnId) {
+                            const columns = this.columnManager.getVisibleColumns();
+                            const colIndex = columns.findIndex(c => c.id === columnId);
+                            const data = this.getData();
+                            const rowIndex = data.findIndex(r => this.dataManager.getRowId(r) === rowId);
+                            let nextColIndex = e.shiftKey ? colIndex - 1 : colIndex + 1;
+                            if (nextColIndex >= 0 && nextColIndex < columns.length) {
+                                this.startEdit(rowId, columns[nextColIndex].id);
+                            }
+                            else if (!e.shiftKey && rowIndex < data.length - 1) {
+                                // Next row, first column
+                                const nextRowId = this.dataManager.getRowId(data[rowIndex + 1]);
+                                this.startEdit(nextRowId, columns[0].id);
+                            }
+                        }
+                    }
+                });
+                input.addEventListener('blur', () => {
+                    // Small delay to allow click events to fire first
+                    setTimeout(() => {
+                        if (this.editingCell) {
+                            this.editValue = input.value;
+                            this.stopEdit(false);
+                        }
+                    }, 100);
+                });
             });
         }
     }
