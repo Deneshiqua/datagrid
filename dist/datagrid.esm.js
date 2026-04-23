@@ -1544,6 +1544,9 @@ var DataGrid = class {
           const rowId = cell.dataset.rowId;
           const columnId = cell.dataset.columnId;
           if (rowId && columnId) {
+            if (this.editingCell && (this.editingCell.rowId !== rowId || this.editingCell.columnId !== columnId)) {
+              this.stopEdit(false);
+            }
             this.startEdit(rowId, columnId);
           }
         });

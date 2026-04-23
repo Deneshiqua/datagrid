@@ -883,6 +883,10 @@ export class DataGrid {
                     const rowId = cell.dataset.rowId;
                     const columnId = cell.dataset.columnId;
                     if (rowId && columnId) {
+                        // If already editing a different cell, stop that edit first
+                        if (this.editingCell && (this.editingCell.rowId !== rowId || this.editingCell.columnId !== columnId)) {
+                            this.stopEdit(false);
+                        }
                         this.startEdit(rowId, columnId);
                     }
                 });

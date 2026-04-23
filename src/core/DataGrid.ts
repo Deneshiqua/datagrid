@@ -971,6 +971,10 @@ export class DataGrid implements DataGridInstance {
           const rowId = (cell as HTMLElement).dataset.rowId;
           const columnId = (cell as HTMLElement).dataset.columnId;
           if (rowId && columnId) {
+            // If already editing a different cell, stop that edit first
+            if (this.editingCell && (this.editingCell.rowId !== rowId || this.editingCell.columnId !== columnId)) {
+              this.stopEdit(false);
+            }
             this.startEdit(rowId, columnId);
           }
         });
