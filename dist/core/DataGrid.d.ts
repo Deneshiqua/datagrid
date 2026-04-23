@@ -41,6 +41,7 @@ export declare class DataGrid implements DataGridInstance {
     isEditing(rowId: string, columnId: string): boolean;
     autoSizeColumn(columnId: string): void;
     autoSizeAllColumns(): void;
+    stretchColumnsToFill(): void;
     private measureTextWidth;
     getSortState(): SortState[];
     setSortState(state: SortState[]): void;

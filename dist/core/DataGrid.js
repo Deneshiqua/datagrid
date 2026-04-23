@@ -60,6 +60,7 @@ export class DataGrid {
         this.setupContainer();
         this.setupScrollHandling();
         this.setupResizeObserver();
+        this.stretchColumnsToFill();
     }
     // ============================================
     // Public API - Data
@@ -246,6 +247,29 @@ export class DataGrid {
                 this.autoSizeColumn(col.id);
             }
         }
+        // After auto-sizing, stretch columns to fill container width
+        this.stretchColumnsToFill();
+    }
+    stretchColumnsToFill() {
+        if (!this.container)
+            return;
+        const containerWidth = this.container.clientWidth;
+        const columns = this.columnManager.getColumnsInOrder().filter(col => this.columnManager.isColumnVisible(col.id));
+        // Calculate current total width
+        let totalWidth = 0;
+        for (const col of columns) {
+            totalWidth += this.columnManager.getColumnWidth(col.id);
+        }
+        // If we have extra space, distribute it across columns
+        if (totalWidth < containerWidth && columns.length > 0) {
+            const extraSpace = containerWidth - totalWidth;
+            const extraPerColumn = Math.floor(extraSpace / columns.length);
+            for (const col of columns) {
+                const currentWidth = this.columnManager.getColumnWidth(col.id);
+                this.columnManager.setColumnWidth(col.id, currentWidth + extraPerColumn);
+            }
+            this.render();
+        }
     }
     measureTextWidth(text, measureEl) {
         measureEl.textContent = text;
@@ -270,6 +294,7 @@ export class DataGrid {
     setColumns(columns) {
         this.columnManager = new ColumnManager(columns);
         this.render();
+        this.stretchColumnsToFill();
     }
     getColumn(columnId) {
         return this.columnManager.getColumn(columnId);
