@@ -116,18 +116,20 @@
   </div>
   
   <div class="controls">
+    <button class="btn-primary" id="btn-auto-size">↔️ Auto-Size All</button>
     <button class="btn-secondary" id="btn-log-edits">📝 Log All Changes</button>
     <button class="btn-danger" id="btn-reset">🔄 Reset Data</button>
   </div>
   
   <div class="instructions">
-    <h3>🎮 Inline Editing Test:</h3>
+    <h3>🎮 Inline Editing & Column Features:</h3>
     <ul>
       <li><strong>Click:</strong> Hücreyi düzenleme moduna al</li>
       <li><strong>Enter:</strong> Değişikliği kaydet</li>
       <li><strong>Escape:</strong> Değişikliği iptal et</li>
       <li><strong>Tab:</strong> Sonraki hücreye geç</li>
       <li><strong>Shift+Tab:</strong> Önceki hücreye geç</li>
+      <li><strong>Right-Click:</strong> Context Menu - Auto-Size seçeneği</li>
     </ul>
   </div>
   
@@ -206,6 +208,11 @@
     }
 
     // Button handlers
+    document.getElementById('btn-auto-size').addEventListener('click', () => {
+      grid.autoSizeAllColumns();
+      console.log('↔️ Auto-sized all columns');
+    });
+
     document.getElementById('btn-log-edits').addEventListener('click', () => {
       const data = grid.getData();
       console.log('📝 Current data:', JSON.stringify(data.slice(0, 10), null, 2));

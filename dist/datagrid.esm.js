@@ -890,6 +890,41 @@ var DataGrid = class {
   isEditing(rowId, columnId) {
     return this.editingCell?.rowId === rowId && this.editingCell?.columnId === columnId;
   }
+  autoSizeColumn(columnId) {
+    const col = this.columnManager.getColumn(columnId);
+    if (!col) return;
+    const measureEl = document.createElement("div");
+    measureEl.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font-weight:600;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:0 12px;';
+    document.body.appendChild(measureEl);
+    let maxWidth = 0;
+    const headerWidth = this.measureTextWidth(col.header, measureEl) + 60;
+    maxWidth = Math.max(maxWidth, headerWidth);
+    const data = this.getData();
+    const sampleSize = Math.min(data.length, 100);
+    for (let i = 0; i < sampleSize; i++) {
+      const row = data[i];
+      const value = row[col.field];
+      const cellText = value === null || value === void 0 ? "" : String(value);
+      const cellWidth = this.measureTextWidth(cellText, measureEl) + 40;
+      maxWidth = Math.max(maxWidth, cellWidth);
+    }
+    document.body.removeChild(measureEl);
+    const finalWidth = Math.max(col.minWidth || 50, Math.min(maxWidth, col.maxWidth || 500));
+    this.columnManager.setColumnWidth(columnId, finalWidth);
+    this.render();
+  }
+  autoSizeAllColumns() {
+    const columns = this.columnManager.getColumnsInOrder();
+    for (const col of columns) {
+      if (this.columnManager.isColumnVisible(col.id)) {
+        this.autoSizeColumn(col.id);
+      }
+    }
+  }
+  measureTextWidth(text, measureEl) {
+    measureEl.textContent = text;
+    return measureEl.offsetWidth;
+  }
   getSortState() {
     return this.dataManager.getSortState();
   }
@@ -1254,6 +1289,13 @@ var DataGrid = class {
       <div class="dg-context-menu-item" data-action="toggle-visibility">
         <span class="icon">${isVisible ? "\u{1F441}\uFE0F" : "\u{1F512}"}</span> ${isVisible ? "Hide Column" : "Show Column"}
       </div>
+      <div class="dg-context-menu-divider"></div>
+      <div class="dg-context-menu-item" data-action="auto-size">
+        <span class="icon">\u2194\uFE0F</span> Auto-Size Column
+      </div>
+      <div class="dg-context-menu-item" data-action="auto-size-all">
+        <span class="icon">\u2194\uFE0F</span> Auto-Size All Columns
+      </div>
     `;
     menu.addEventListener("click", (e) => {
       const target = e.target;
@@ -1301,6 +1343,13 @@ var DataGrid = class {
       case "toggle-visibility":
         this.columnManager.toggleColumnVisibility(columnId);
         break;
+      case "auto-size":
+        this.autoSizeColumn(columnId);
+        return;
+      // Don't call render() again, autoSizeColumn already does
+      case "auto-size-all":
+        this.autoSizeAllColumns();
+        return;
     }
     this.render();
   }
