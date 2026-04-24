@@ -6,7 +6,7 @@ esbuild.build({
   bundle: true,
   format: 'iife',
   globalName: 'DataGrid',
-  outfile: path.join(__dirname, 'dist/datagrid.esm.js'),
+  outfile: path.join(__dirname, 'dist/datagrid.js'),
   sourcemap: true,
   minify: false,
 }).catch(() => process.exit(1));
