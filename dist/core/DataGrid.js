@@ -306,11 +306,14 @@ export class DataGrid {
         const columns = this.columnManager.getColumnsInOrder().filter(col => this.columnManager.isColumnVisible(col.id));
         // Calculate current total width
         let totalWidth = 0;
+        const hasCheckbox = this.config.selection.mode !== 'none' && this.config.selection.checkboxes;
+        if (hasCheckbox)
+            totalWidth += 50; // checkbox column width
         for (const col of columns) {
             totalWidth += this.columnManager.getColumnWidth(col.id);
         }
         // If we have extra space, distribute it across columns
-        if (totalWidth < containerWidth && columns.length > 0) {
+        if (totalWidth < containerWidth) {
             const extraSpace = containerWidth - totalWidth;
             const extraPerColumn = Math.floor(extraSpace / columns.length);
             for (const col of columns) {

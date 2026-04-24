@@ -1046,10 +1046,12 @@ var DataGrid = class {
     const containerWidth = this.container.clientWidth;
     const columns = this.columnManager.getColumnsInOrder().filter((col) => this.columnManager.isColumnVisible(col.id));
     let totalWidth = 0;
+    const hasCheckbox = this.config.selection.mode !== "none" && this.config.selection.checkboxes;
+    if (hasCheckbox) totalWidth += 50;
     for (const col of columns) {
       totalWidth += this.columnManager.getColumnWidth(col.id);
     }
-    if (totalWidth < containerWidth && columns.length > 0) {
+    if (totalWidth < containerWidth) {
       const extraSpace = containerWidth - totalWidth;
       const extraPerColumn = Math.floor(extraSpace / columns.length);
       for (const col of columns) {
