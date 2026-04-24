@@ -6,21 +6,49 @@
   <title>DataGrid v0.8 - Row Grouping</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
+    
+    body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1a1a2e; 
-      color: #fff;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
       padding: 20px;
+      color: #eee;
+    }
+    
+    h1 { text-align: center; margin-bottom: 5px; color: #fff; }
+    h1 a { color: #fff; text-decoration: none; }
+    .version { text-align: center; color: #6c5ce7; font-weight: bold; margin-bottom: 15px; }
+    
+    .feature-badge {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .feature-badge span {
+      background: rgba(108, 92, 231, 0.2);
+      color: #a29bfe;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin: 0 4px;
+      display: inline-block;
+    }
+    
+    .feature-badge span.completed {
+      background: rgba(0, 206, 201, 0.2);
+      color: #00cec9;
     }
     
     .controls {
+      max-width: 1400px;
+      margin: 0 auto 15px;
       display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 10px;
       flex-wrap: wrap;
+      justify-content: center;
     }
     
-    .controls button {
+    .controls button, .controls select {
       padding: 10px 20px;
       border-radius: 8px;
       border: none;
@@ -68,19 +96,23 @@
     
     .instructions h3 { color: #fff; margin-bottom: 10px; }
     .instructions ul { margin-left: 20px; }
-    
-    select {
-      padding: 10px 16px;
-      border-radius: 8px;
-      border: none;
-      background: #2d3436;
-      color: white;
-      font-size: 14px;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
+  <h1><a href="/demo/">🚀 DataGrid</a></h1>
+  <div class="version">v0.8.0 - Row Grouping</div>
+  
+  <div class="feature-badge">
+    <span class="completed">✅ Virtual Scrolling</span>
+    <span class="completed">✅ Undo/Redo</span>
+    <span class="completed">✅ Column System</span>
+    <span class="completed">✅ Multi-Column Sort</span>
+    <span class="completed">✅ Filtering</span>
+    <span class="completed">✅ Row Selection</span>
+    <span class="completed">✅ Inline Editing</span>
+    <span class="completed">✅ Row Grouping</span>
+  </div>
+  
   <div class="controls">
     <select id="group-by-column">
       <option value="">-- Group By --</option>
