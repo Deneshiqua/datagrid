@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataGrid v0.1 - Virtual Scrolling Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #eee;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    
+    .version {
+      text-align: center;
+      color: #6c5ce7;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    
+    .feature-badge {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .feature-badge span {
+      background: rgba(108, 92, 231, 0.2);
+      color: #a29bfe;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin: 0 4px;
+      display: inline-block;
+    }
+    
+    .grid-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      height: 500px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    
+    #my-grid {
+      height: 100%;
+    }
+    
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .info span {
+      color: #6c5ce7;
+      font-weight: bold;
+    }
+    
+    .perf-stats {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 15px;
+    }
+    
+    .perf-stats .stat {
+      background: rgba(255,255,255,0.05);
+      padding: 10px 20px;
+      border-radius: 8px;
+    }
+    
+    .perf-stats .stat-label {
+      color: #888;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+    
+    .perf-stats .stat-value {
+      color: #00cec9;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    
+    /* DataGrid Basic Styles */
+    .dg-header {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+    }
+    
+    .dg-header-cell {
+      font-weight: 600;
+      color: #495057;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    
+    .dg-header-cell:hover {
+      background: #e9ecef;
+    }
+    
+    .dg-row {
+      border-bottom: 1px solid #f1f3f5;
+      cursor: pointer;
+    }
+    
+    .dg-row:hover {
+      background: #f8f9fa;
+    }
+    
+    .dg-cell {
+      color: #212529;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1><a href="/demo/" style="color:#fff; text-decoration:none;">🚀 DataGrid</a></h1>
+  <p class="version">v0.1.0 - Epic 1: Virtual Scrolling Engine</p>
+  
+  <div class="feature-badge">
+    <span>✅ Virtual Scrolling</span>
+    <span>⏳ Sorting</span>
+    <span>⏳ Filtering</span>
+    <span>⏳ Selection</span>
+    <span>⏳ Editing</span>
+  </div>
+  
+  <div class="grid-container">
+    <div id="my-grid"></div>
+  </div>
+  
+  <div class="info">
+    <p>🎯 <span id="row-count">0</span> rows | Only <span id="rendered-count">0</span> rendered at a time</p>
+    <div class="perf-stats">
+      <div class="stat">
+        <div class="stat-label">Scroll FPS</div>
+        <div class="stat-value" id="fps">60</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Render Time</div>
+        <div class="stat-value" id="render-time">0ms</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { DataGrid } from './dist/datagrid.js';
+
+    // Generate test data
+    const generateData = (count) => {
+      const data = [];
+      const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
+      const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose', 'Austin', 'Jacksonville', 'Fort Worth', 'Columbus', 'Charlotte'];
+      const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'company.com'];
+      
+      for (let i = 1; i <= count; i++) {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        data.push({
+          id: `row-${i}`,
+          rowNumber: i,
+          firstName,
+          lastName,
+          fullName: `${firstName} ${lastName}`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domains[Math.floor(Math.random() * domains.length)]}`,
+          age: Math.floor(Math.random() * 50) + 18,
+          city: cities[Math.floor(Math.random() * cities.length)],
+          salary: Math.floor(Math.random() * 80000) + 35000,
+          department: ['Engineering', 'Sales', 'Marketing', 'HR', 'Finance'][Math.floor(Math.random() * 5)],
+          active: Math.random() > 0.2,
+        });
+      }
+      return data;
+    };
+
+    // Define columns
+    const columns = [
+      { id: 'rowNumber', field: 'rowNumber', header: '#', width: 70 },
+      { id: 'fullName', field: 'fullName', header: 'Full Name', width: 180 },
+      { id: 'email', field: 'email', header: 'Email', width: 240 },
+      { id: 'age', field: 'age', header: 'Age', width: 80, sortable: true },
+      { id: 'city', field: 'city', header: 'City', width: 130 },
+      { id: 'department', field: 'department', header: 'Department', width: 130 },
+      { id: 'salary', field: 'salary', header: 'Salary ($)', width: 120, sortable: true },
+      { id: 'active', field: 'active', header: 'Active', width: 80 },
+    ];
+
+    // Performance tracking
+    let lastFrameTime = performance.now();
+    let frameCount = 0;
+    let fps = 60;
+
+    function updateFPS() {
+      frameCount++;
+      const now = performance.now();
+      const delta = now - lastFrameTime;
+      
+      if (delta >= 1000) {
+        fps = Math.round((frameCount * 1000) / delta);
+        document.getElementById('fps').textContent = fps;
+        frameCount = 0;
+        lastFrameTime = now;
+      }
+      
+      requestAnimationFrame(updateFPS);
+    }
+
+    // Initialize grid
+    const container = document.getElementById('my-grid');
+    const grid = new DataGrid(container, {
+      rowHeight: 48,
+      headerHeight: 52,
+      bufferSize: 10,
+      sorting: {
+        multiSort: true,
+      },
+      onScroll: (pos) => {
+        // Update rendered count
+        const viewport = grid.getViewportInfo();
+        document.getElementById('rendered-count').textContent = viewport.visibleCount;
+      },
+      onSort: (states) => {
+        console.log('Sort:', states);
+      },
+    });
+
+    grid.setColumns(columns);
+
+    // Generate and set data
+    const rowCount = 100000;
+    const startTime = performance.now();
+    const data = generateData(rowCount);
+    const setTime = performance.now() - startTime;
+    
+    grid.setData(data);
+    const renderTime = performance.now() - startTime;
+
+    // Update UI
+    document.getElementById('row-count').textContent = rowCount.toLocaleString();
+    document.getElementById('rendered-count').textContent = grid.getViewportInfo().visibleCount;
+    document.getElementById('render-time').textContent = `${Math.round(renderTime)}ms`;
+
+    // Start FPS tracking
+    requestAnimationFrame(updateFPS);
+
+    console.log('✅ DataGrid v0.1 initialized');
+    console.log('📊 Total rows:', rowCount);
+    console.log('📊 Rendered rows:', grid.getViewportInfo().visibleCount);
+    console.log('⏱️  Set data time:', setTime.toFixed(2) + 'ms');
+    console.log('');
+    console.log('💡 Try scrolling fast — only visible rows are in DOM!');
+    console.log('💡 Click column headers to sort (more features coming)');
+  </script>
+</body>
+</html>

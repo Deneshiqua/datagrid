@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataGrid v0.8 - Row Grouping</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #eee;
+    }
+    
+    h1 { text-align: center; margin-bottom: 5px; color: #fff; }
+    h1 a { color: #fff; text-decoration: none; }
+    .version { text-align: center; color: #6c5ce7; font-weight: bold; margin-bottom: 15px; }
+    
+    .feature-badge {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .feature-badge span {
+      background: rgba(108, 92, 231, 0.2);
+      color: #a29bfe;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin: 0 4px;
+      display: inline-block;
+    }
+    
+    .feature-badge span.completed {
+      background: rgba(0, 206, 201, 0.2);
+      color: #00cec9;
+    }
+    
+    .controls {
+      max-width: 1400px;
+      margin: 0 auto 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .controls button, .controls select {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .controls button:hover { transform: translateY(-2px); }
+    .btn-primary { background: #6c5ce7; color: white; }
+    .btn-secondary { background: #2d3436; color: white; }
+    .btn-danger { background: #d63031; color: white; }
+    
+    .grid-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      height: 500px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    
+    #my-grid { height: 100%; }
+    
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .info span { color: #6c5ce7; font-weight: bold; }
+    
+    .instructions {
+      max-width: 1400px;
+      margin: 20px auto;
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    .instructions h3 { color: #fff; margin-bottom: 10px; }
+    .instructions ul { margin-left: 20px; }
+  </style>
+</head>
+<body>
+  <h1><a href="/demo/">🚀 DataGrid</a></h1>
+  <div class="version">v0.8.0 - Row Grouping</div>
+  
+  <div class="feature-badge">
+    <span class="completed">✅ Virtual Scrolling</span>
+    <span class="completed">✅ Undo/Redo</span>
+    <span class="completed">✅ Column System</span>
+    <span class="completed">✅ Multi-Column Sort</span>
+    <span class="completed">✅ Filtering</span>
+    <span class="completed">✅ Row Selection</span>
+    <span class="completed">✅ Inline Editing</span>
+    <span class="completed">✅ Row Grouping</span>
+  </div>
+  
+  <div class="controls">
+    <select id="group-by-column">
+      <option value="">-- Group By --</option>
+      <option value="department">Department</option>
+      <option value="city">City</option>
+    </select>
+    <button class="btn-secondary" id="btn-expand-all">▶ Expand All</button>
+    <button class="btn-secondary" id="btn-collapse-all">◀ Collapse All</button>
+    <button class="btn-danger" id="btn-clear-group">✕ Clear Group</button>
+  </div>
+  
+  <div class="instructions">
+    <h3>📂 Row Grouping:</h3>
+    <ul>
+      <li><strong>Select column:</strong> Choose which column to group by</li>
+      <li><strong>Click ▶/▼:</strong> Expand/collapse a group</li>
+      <li><strong>Expand All:</strong> Show all groups</li>
+      <li><strong>Collapse All:</strong> Hide all group contents</li>
+    </ul>
+  </div>
+  
+  <div class="grid-container">
+    <div id="my-grid"></div>
+  </div>
+  
+  <div class="info">
+    DataGrid v0.8 - Row Grouping | <span id="row-count">0</span> rows
+  </div>
+
+  <script src="../dist/datagrid.js"></script>
+  <script>
+    let grid = null;
+    
+    const columns = [
+      { id: 'name', field: 'name', header: 'Name', width: 180 },
+      { id: 'email', field: 'email', header: 'Email', width: 220 },
+      { id: 'age', field: 'age', header: 'Age', width: 80, type: 'number' },
+      { id: 'city', field: 'city', header: 'City', width: 140 },
+      { id: 'department', field: 'department', header: 'Department', width: 140 },
+      { id: 'salary', field: 'salary', header: 'Salary ($)', width: 120, type: 'number' },
+    ];
+
+    const generateData = (count) => {
+      const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+      const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia'];
+      const departments = ['Engineering', 'Sales', 'Marketing', 'HR'];
+      const data = [];
+      for (let i = 1; i <= count; i++) {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        data.push({
+          id: i,
+          name: `${firstName} ${lastName}`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+          age: Math.floor(Math.random() * 40) + 20,
+          city: cities[Math.floor(Math.random() * cities.length)],
+          department: departments[Math.floor(Math.random() * departments.length)],
+          salary: Math.floor(Math.random() * 60000) + 40000,
+        });
+      }
+      return data;
+    };
+
+    function initGrid() {
+      const data = generateData(100);
+      const container = document.getElementById('my-grid');
+      grid = new DataGrid(container, {
+        rowHeight: 40,
+        headerHeight: 52,
+        selection: { mode: 'multi', checkboxes: true },
+        editing: { enabled: false },
+      });
+
+      grid.setColumns(columns);
+      grid.setData(data);
+      updateRowCount();
+      
+      console.log('✅ DataGrid v0.8 initialized with Row Grouping');
+    }
+
+    function updateRowCount() {
+      const data = grid.getData();
+      document.getElementById('row-count').textContent = data.length;
+    }
+
+    document.getElementById('group-by-column').addEventListener('change', (e) => {
+      const columnId = e.target.value;
+      if (columnId) {
+        grid.setGroupBy(columnId);
+      } else {
+        grid.clearGroup();
+      }
+      updateRowCount();
+    });
+
+    document.getElementById('btn-expand-all').addEventListener('click', () => {
+      grid.expandAllGroups();
+    });
+
+    document.getElementById('btn-collapse-all').addEventListener('click', () => {
+      grid.collapseAllGroups();
+    });
+
+    document.getElementById('btn-clear-group').addEventListener('click', () => {
+      grid.clearGroup();
+      document.getElementById('group-by-column').value = '';
+      updateRowCount();
+    });
+
+    initGrid();
+  </script>
+</body>
+</html>
