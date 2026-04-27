@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataGrid - Demo Versions</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: #eee;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #fff;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #6c5ce7;
+      font-weight: bold;
+      margin-bottom: 40px;
+    }
+    
+    .description {
+      text-align: center;
+      color: #888;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+    
+    .versions {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .version-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .version-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+      border-color: rgba(108, 92, 231, 0.5);
+    }
+    
+    .version-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .version-number {
+      background: #6c5ce7;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    
+    .version-date {
+      color: #666;
+      font-size: 0.85rem;
+    }
+    
+    .version-title {
+      font-size: 1.3rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    
+    .version-desc {
+      color: #aaa;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .feature {
+      background: rgba(0, 206, 201, 0.15);
+      color: #00cec9;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+    
+    .feature.pending {
+      background: rgba(255, 200, 0, 0.15);
+      color: #ffc800;
+    }
+    
+    .demo-link {
+      display: inline-block;
+      background: #6c5ce7;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    
+    .demo-link:hover {
+      background: #5b4cdb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    
+    .status.done {
+      background: rgba(0, 206, 201, 0.2);
+      color: #00cec9;
+    }
+    
+    .status.in-progress {
+      background: rgba(255, 200, 0, 0.2);
+      color: #ffc800;
+    }
+    
+    .status.todo {
+      background: rgba(255, 255, 255, 0.1);
+      color: #888;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    footer a {
+      color: #6c5ce7;
+      text-decoration: none;
+    }
+    
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 DataGrid</h1>
+    <p class="subtitle">High-Performance JavaScript Data Grid Library</p>
+    
+    <p class="description">
+      AG Grid'e alternatif, açık kaynaklı, yüksek performanslı bir data grid kütüphanesi.<br>
+      Vanilla JavaScript ile yazılmış, React/Vue/Angular wrapper'ları ile tüm framework'lerde çalışır.
+    </p>
+    
+    <div class="versions">
+      
+      <!-- v0.7 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.7.0</span>
+          <span class="version-date">2026-04-23</span>
+        </div>
+        <h2 class="version-title">
+          Inline Editing
+          <span class="status in-progress">🔄 Epic 7</span>
+        </h2>
+        <p class="version-desc">
+          Hücre içinde düzenleme, Enter ile kaydet, Escape ile iptal, Tab ile navigasyon.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Column System</span>
+          <span class="feature">✅ Multi-Column Sort</span>
+          <span class="feature">✅ Filtering</span>
+          <span class="feature">✅ Row Selection</span>
+          <span class="feature">✅ Inline Editing</span>
+        </div>
+        <a href="/demo/v0.7-inline-editing.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.8 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.8.0</span>
+          <span class="version-date">2026-04-23</span>
+        </div>
+        <h2 class="version-title">
+          Row Grouping
+          <span class="status done">✅ Epic 8</span>
+        </h2>
+        <p class="version-desc">
+          Satırları bir kolona göre gruplandırma, grupları genişlet/daralt.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Column System</span>
+          <span class="feature">✅ Multi-Column Sort</span>
+          <span class="feature">✅ Filtering</span>
+          <span class="feature">✅ Row Selection</span>
+          <span class="feature">✅ Inline Editing</span>
+          <span class="feature">✅ Row Grouping</span>
+        </div>
+        <a href="/demo/v0.8-row-grouping.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.6 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.6.0</span>
+          <span class="version-date">2026-04-23</span>
+        </div>
+        <h2 class="version-title">
+          Row Selection
+          <span class="status done">✅ Epic 6</span>
+        </h2>
+        <p class="version-desc">
+          Tek/çoklu satır seçimi, checkbox, Ctrl+Click, Shift+Click aralık seçimi.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Column System</span>
+          <span class="feature">✅ Multi-Column Sort</span>
+          <span class="feature">✅ Filtering</span>
+          <span class="feature">✅ Row Selection</span>
+        </div>
+        <a href="/demo/v0.6-row-selection.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.5 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.5.0</span>
+          <span class="version-date">2026-04-22</span>
+        </div>
+        <h2 class="version-title">
+          Filtering System
+          <span class="status done">✅ Epic 5</span>
+        </h2>
+        <p class="version-desc">
+          Her kolonun header'ında filter input'u. Text arama, numara karşılaştırma ve daha fazlası.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Column System</span>
+          <span class="feature">✅ Multi-Column Sort</span>
+          <span class="feature">✅ Column Filtering</span>
+          <span class="feature pending">⏳ Selection</span>
+        </div>
+        <a href="/demo/v0.5-filtering.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.4 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.4.0</span>
+          <span class="version-date">2026-04-22</span>
+        </div>
+        <h2 class="version-title">
+          Multi-Column Sorting
+          <span class="status done">✅ Epic 4</span>
+        </h2>
+        <p class="version-desc">
+          Birden fazla kolonu sırala. Shift+Click ile multi-sort yap, numaralı göstergeler ile sıralama düzenini takip et.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Column System</span>
+          <span class="feature">✅ Multi-Column Sort</span>
+          <span class="feature pending">⏳ Filtering</span>
+          <span class="feature pending">⏳ Selection</span>
+        </div>
+        <a href="/demo/v0.4-multi-sort.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.3 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.3.0</span>
+          <span class="version-date">2026-04-22</span>
+        </div>
+        <h2 class="version-title">
+          Column System
+          <span class="status done">✅ Epic 3</span>
+        </h2>
+        <p class="version-desc">
+          Column resize, pin (left/right), and sort özellikleri eklendi. 
+          Kolonları sürükleyerek boyutlandır, sabitle veya gizle.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Column Resize</span>
+          <span class="feature">✅ Column Pin</span>
+          <span class="feature">✅ Column Sort</span>
+          <span class="feature">✅ Column Hide/Show</span>
+          <span class="feature pending">⏳ Filtering</span>
+          <span class="feature pending">⏳ Selection</span>
+        </div>
+        <a href="/v0.3-column-system.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.2 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.2.0</span>
+          <span class="version-date">2026-04-22</span>
+        </div>
+        <h2 class="version-title">
+          Undo/Redo & Batch Operations
+          <span class="status done">✅ Epic 1+2 Done</span>
+        </h2>
+        <p class="version-desc">
+          Virtual scrolling, Undo/Redo sistemi ve Batch operasyonları eklendi.
+          Birden fazla satır ekleme, silme, güncelleme işlemleri tek seferde yapılabilir.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ Undo/Redo</span>
+          <span class="feature">✅ Batch Operations</span>
+          <span class="feature pending">⏳ Sorting</span>
+          <span class="feature pending">⏳ Filtering</span>
+          <span class="feature pending">⏳ Selection</span>
+        </div>
+        <a href="/v0.2-undo-redo.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+      <!-- v0.1 -->
+      <div class="version-card">
+        <div class="version-header">
+          <span class="version-number">v0.1.0</span>
+          <span class="version-date">2026-04-22</span>
+        </div>
+        <h2 class="version-title">
+          Virtual Scrolling Engine
+          <span class="status done">✅ Epic 1 Done</span>
+        </h2>
+        <p class="version-desc">
+          100,000+ satır performans testi. O(1) complexity ile sadece görünür satırlar render ediliyor.
+          FPS counter ile scroll performansı takip edilebilir.
+        </p>
+        <div class="features">
+          <span class="feature">✅ Virtual Scrolling</span>
+          <span class="feature">✅ 100k Row Test</span>
+          <span class="feature">✅ FPS Counter</span>
+          <span class="feature pending">⏳ Sorting</span>
+          <span class="feature pending">⏳ Filtering</span>
+        </div>
+        <a href="/v0.1-virtual-scroll.html" class="demo-link">🎮 Demo'yu Aç</a>
+      </div>
+      
+    </div>
+    
+    <footer>
+      <p>
+        <a href="https://github.com/Deneshiqua/datagrid" target="_blank">📦 GitHub</a> | 
+        <a href="https://github.com/users/Deneshiqua/projects/1" target="_blank">📋 Roadmap</a>
+      </p>
+      <p style="margin-top: 8px;">Built with ❤️ by OpenClaw Agent</p>
+    </footer>
+  </div>
+</body>
+</html>
