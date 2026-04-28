@@ -1,7 +1,10 @@
-// Entry point for browser - assigns DataGrid to window
+// Entry point for browser - pure side-effect, assigns DataGrid to globalThis
 import { DataGrid } from './core/DataGrid';
-// Attach to window IMMEDIATELY when script loads
-window.DataGrid = DataGrid;
-// Also export for ESM compatibility (won't affect IIFE)
-export { DataGrid };
+// Assign to both window and globalThis for maximum compatibility
+if (typeof globalThis !== 'undefined') {
+    globalThis.DataGrid = DataGrid;
+}
+if (typeof window !== 'undefined') {
+    window.DataGrid = DataGrid;
+}
 //# sourceMappingURL=browser.js.map

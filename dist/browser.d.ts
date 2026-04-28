@@ -1,3 +1,2 @@
-import { DataGrid } from './core/DataGrid';
-export { DataGrid };
+export {};
 //# sourceMappingURL=browser.d.ts.map

@@ -10,7 +10,5 @@ esbuild.build({
   sourcemap: true,
   minify: false,
   treeShaking: false,
+  external: [],
 }).catch(() => process.exit(1));
-
-// Rename output to proper name
-const fs = require('fs');
